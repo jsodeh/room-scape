@@ -1,16 +1,20 @@
 
 import { useState, useRef } from 'react';
-import { UploadCloud, X, Image, Check } from 'lucide-react';
+import { UploadCloud, X, Image, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { uploadMultipleImages } from '@/services/storageService';
 
 interface ImageUploadProps {
   onImagesSelected: (files: File[]) => void;
+  onImageUrlsReady?: (urls: string[]) => void;
+  maxFiles?: number;
 }
 
-const ImageUpload = ({ onImagesSelected }: ImageUploadProps) => {
+const ImageUpload = ({ onImagesSelected, onImageUrlsReady, maxFiles = 10 }: ImageUploadProps) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -26,6 +30,11 @@ const ImageUpload = ({ onImagesSelected }: ImageUploadProps) => {
         return;
       }
       
+      if (selectedFiles.length + validFiles.length > maxFiles) {
+        toast.warning(`You can upload a maximum of ${maxFiles} images.`);
+        return;
+      }
+      
       setSelectedFiles(prev => [...prev, ...validFiles]);
       onImagesSelected([...selectedFiles, ...validFiles]);
       
@@ -33,7 +42,7 @@ const ImageUpload = ({ onImagesSelected }: ImageUploadProps) => {
       const newPreviews = validFiles.map(file => URL.createObjectURL(file));
       setPreviews(prev => [...prev, ...newPreviews]);
       
-      toast.success(`${validFiles.length} image${validFiles.length === 1 ? '' : 's'} uploaded`);
+      toast.success(`${validFiles.length} image${validFiles.length === 1 ? '' : 's'} added`);
     }
   };
 
@@ -71,6 +80,11 @@ const ImageUpload = ({ onImagesSelected }: ImageUploadProps) => {
         return;
       }
       
+      if (selectedFiles.length + validFiles.length > maxFiles) {
+        toast.warning(`You can upload a maximum of ${maxFiles} images.`);
+        return;
+      }
+      
       setSelectedFiles(prev => [...prev, ...validFiles]);
       onImagesSelected([...selectedFiles, ...validFiles]);
       
@@ -78,7 +92,35 @@ const ImageUpload = ({ onImagesSelected }: ImageUploadProps) => {
       const newPreviews = validFiles.map(file => URL.createObjectURL(file));
       setPreviews(prev => [...prev, ...newPreviews]);
       
-      toast.success(`${validFiles.length} image${validFiles.length === 1 ? '' : 's'} uploaded`);
+      toast.success(`${validFiles.length} image${validFiles.length === 1 ? '' : 's'} added`);
+    }
+  };
+
+  const handleUploadToStorage = async () => {
+    if (selectedFiles.length === 0) {
+      toast.warning('No images selected for upload');
+      return;
+    }
+    
+    setUploading(true);
+    
+    try {
+      const urls = await uploadMultipleImages(selectedFiles);
+      
+      if (urls.length > 0) {
+        toast.success(`${urls.length} image${urls.length === 1 ? '' : 's'} uploaded successfully`);
+        
+        if (onImageUrlsReady) {
+          onImageUrlsReady(urls);
+        }
+      } else {
+        toast.error('Failed to upload images');
+      }
+    } catch (error) {
+      toast.error('Error uploading images to storage');
+      console.error('Upload error:', error);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -113,7 +155,7 @@ const ImageUpload = ({ onImagesSelected }: ImageUploadProps) => {
       {previews.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-medium">Uploaded Images</h3>
+            <h3 className="text-lg font-medium">Selected Images</h3>
             <div className="flex items-center text-sm text-gray-500 gap-1">
               <Check className="h-4 w-4 text-green-500" />
               <span>{selectedFiles.length} image{selectedFiles.length === 1 ? '' : 's'}</span>
@@ -157,6 +199,28 @@ const ImageUpload = ({ onImagesSelected }: ImageUploadProps) => {
               </div>
             </div>
           </div>
+
+          {onImageUrlsReady && (
+            <div className="flex justify-end">
+              <Button 
+                onClick={handleUploadToStorage} 
+                disabled={uploading || selectedFiles.length === 0}
+                className="gap-2"
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <UploadCloud className="h-4 w-4" />
+                    Upload to Storage
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

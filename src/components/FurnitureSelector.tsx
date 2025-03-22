@@ -1,12 +1,15 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Filter, ChevronDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+import { getFurnitureItems } from '@/services/storageService';
+import { FurnitureItem } from '@/lib/supabase';
 
-// Mock furniture data
+// Categories remain static but furniture items will be fetched from Supabase
 const FURNITURE_CATEGORIES = [
   { id: 'all', name: 'All' },
   { id: 'sofas', name: 'Sofas' },
@@ -18,82 +21,40 @@ const FURNITURE_CATEGORIES = [
   { id: 'lighting', name: 'Lighting' },
 ];
 
-const FURNITURE_ITEMS = [
-  {
-    id: 1,
-    name: 'Modern Sofa',
-    category: 'sofas',
-    description: 'Comfortable modern sofa with clean lines',
-    image: 'https://images.unsplash.com/photo-1540574163026-643ea20ade25?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
-  },
-  {
-    id: 2,
-    name: 'Wooden Coffee Table',
-    category: 'tables',
-    description: 'Rustic wooden coffee table',
-    image: 'https://images.unsplash.com/photo-1532372320572-cda25653a58d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1742&q=80',
-  },
-  {
-    id: 3,
-    name: 'Dining Chair',
-    category: 'chairs',
-    description: 'Contemporary dining chair',
-    image: 'https://images.unsplash.com/photo-1586158291800-2665f07bba79?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1374&q=80',
-  },
-  {
-    id: 4,
-    name: 'Queen Bed',
-    category: 'beds',
-    description: 'Queen size bed with wooden frame',
-    image: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
-  },
-  {
-    id: 5,
-    name: 'Bookshelf',
-    category: 'storage',
-    description: 'Tall bookshelf with five shelves',
-    image: 'https://images.unsplash.com/photo-1588168649846-da652bc5e165?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1742&q=80',
-  },
-  {
-    id: 6,
-    name: 'Wall Art',
-    category: 'decor',
-    description: 'Abstract wall art for modern homes',
-    image: 'https://images.unsplash.com/photo-1551732998-9573f695fdbb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
-  },
-  {
-    id: 7,
-    name: 'Floor Lamp',
-    category: 'lighting',
-    description: 'Adjustable contemporary floor lamp',
-    image: 'https://images.unsplash.com/photo-1540932239986-30128078f3c5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1374&q=80',
-  },
-  {
-    id: 8,
-    name: 'Side Table',
-    category: 'tables',
-    description: 'Minimalist side table',
-    image: 'https://images.unsplash.com/photo-1499933374294-4584851497cc?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
-  },
-];
-
 interface FurnitureSelectorProps {
-  onFurnitureSelected: (items: typeof FURNITURE_ITEMS) => void;
+  onFurnitureSelected: (items: FurnitureItem[]) => void;
 }
 
 const FurnitureSelector = ({ onFurnitureSelected }: FurnitureSelectorProps) => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedItems, setSelectedItems] = useState<typeof FURNITURE_ITEMS>([]);
+  const [selectedItems, setSelectedItems] = useState<FurnitureItem[]>([]);
+  const [furnitureItems, setFurnitureItems] = useState<FurnitureItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredItems = FURNITURE_ITEMS.filter(item => {
-    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
+  useEffect(() => {
+    const loadFurnitureItems = async () => {
+      setLoading(true);
+      try {
+        const items = await getFurnitureItems(selectedCategory);
+        setFurnitureItems(items);
+      } catch (error) {
+        console.error('Error loading furniture items:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadFurnitureItems();
+  }, [selectedCategory]);
+
+  const filteredItems = furnitureItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          item.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+    return matchesSearch;
   });
 
-  const toggleItemSelection = (item: (typeof FURNITURE_ITEMS)[0]) => {
+  const toggleItemSelection = (item: FurnitureItem) => {
     const isSelected = selectedItems.some(selectedItem => selectedItem.id === item.id);
     
     if (isSelected) {
@@ -143,39 +104,57 @@ const FurnitureSelector = ({ onFurnitureSelected }: FurnitureSelectorProps) => {
         </ScrollArea>
       </div>
       
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-        {filteredItems.map(item => {
-          const isSelected = selectedItems.some(selectedItem => selectedItem.id === item.id);
-          
-          return (
-            <div 
-              key={item.id}
-              className={`
-                rounded-lg overflow-hidden border border-gray-200 bg-card transition-all duration-200
-                ${isSelected ? 'ring-2 ring-primary' : 'hover:border-gray-300'}
-              `}
-              onClick={() => toggleItemSelection(item)}
-            >
-              <div className="aspect-square relative overflow-hidden">
-                <img 
-                  src={item.image} 
-                  alt={item.name}
-                  className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                />
-                {isSelected && (
-                  <div className="absolute top-2 right-2">
-                    <Badge>Selected</Badge>
-                  </div>
-                )}
-              </div>
-              <div className="p-3">
-                <h4 className="font-medium text-sm">{item.name}</h4>
-                <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
-              </div>
+      {loading ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, index) => (
+            <div key={index} className="space-y-2">
+              <Skeleton className="aspect-square w-full rounded-lg" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {filteredItems.length > 0 ? (
+            filteredItems.map(item => {
+              const isSelected = selectedItems.some(selectedItem => selectedItem.id === item.id);
+              
+              return (
+                <div 
+                  key={item.id}
+                  className={`
+                    rounded-lg overflow-hidden border border-gray-200 bg-card transition-all duration-200
+                    ${isSelected ? 'ring-2 ring-primary' : 'hover:border-gray-300'}
+                  `}
+                  onClick={() => toggleItemSelection(item)}
+                >
+                  <div className="aspect-square relative overflow-hidden">
+                    <img 
+                      src={item.image_url} 
+                      alt={item.name}
+                      className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                    />
+                    {isSelected && (
+                      <div className="absolute top-2 right-2">
+                        <Badge>Selected</Badge>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <h4 className="font-medium text-sm">{item.name}</h4>
+                    <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="col-span-full py-12 text-center text-muted-foreground">
+              <p>No furniture items found. Try adjusting your search or filters.</p>
+            </div>
+          )}
+        </div>
+      )}
       
       {selectedItems.length > 0 && (
         <div className="flex items-center justify-between p-4 bg-secondary rounded-lg">
