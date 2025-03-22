@@ -1,14 +1,16 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// These environment variables will need to be set in your project
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Check for environment variables or use demo values
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://xyzcompany.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhtbHprdnl5a2VqeXVzenlvbmN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE2NTUyMzcwMTAsImV4cCI6MTk3MDgxMzAxMH0.aI1SruPYq-wPGc5xqGpWwxj1xpJBIZQLZFpnIM6AjDo';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+  console.warn('Supabase environment variables are missing. Using demo values - DO NOT USE FOR PRODUCTION.');
+  console.warn('Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment variables.');
 }
 
+// Create a single supabase client for the entire app
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Types for our database tables
