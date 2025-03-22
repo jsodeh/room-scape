@@ -233,6 +233,33 @@ export type Database = {
         }
         Relationships: []
       }
+      furniture_items: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string
+          name: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url: string
+          name: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string
+          name?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           category: string
@@ -290,6 +317,45 @@ export type Database = {
           created_at?: string
           id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      staging_projects: {
+        Row: {
+          created_at: string
+          furniture_ids: string[]
+          id: string
+          instructions: string | null
+          original_images: string[]
+          staged_images: string[]
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          furniture_ids?: string[]
+          id?: string
+          instructions?: string | null
+          original_images?: string[]
+          staged_images?: string[]
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          furniture_ids?: string[]
+          id?: string
+          instructions?: string | null
+          original_images?: string[]
+          staged_images?: string[]
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

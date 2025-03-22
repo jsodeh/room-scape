@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { TabsWrapper, TabsContent, TabsList, TabsTrigger } from '@/components/TabsWrapper';
 import { 
@@ -16,9 +17,11 @@ import ImageUpload from '@/components/ImageUpload';
 import FurnitureSelector from '@/components/FurnitureSelector';
 import StageInstructions from '@/components/StageInstructions';
 import ResultsDisplay from '@/components/ResultsDisplay';
-import { FurnitureItem } from '@/lib/supabase';
+import { FurnitureItem, createStagingProject, generateStagedImages, getStagingProject } from '@/services/storageService';
+import { useAuth } from '@/context/AuthContext';
 
 const Index = () => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('upload');
   const [uploadedImages, setUploadedImages] = useState<File[]>([]);
   const [selectedFurniture, setSelectedFurniture] = useState<FurnitureItem[]>([]);
@@ -27,7 +30,10 @@ const Index = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [originalImagePreviews, setOriginalImagePreviews] = useState<string[]>([]);
+  const [originalImageUrls, setOriginalImageUrls] = useState<string[]>([]);
   const [stagedImageResults, setStagedImageResults] = useState<string[]>([]);
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [pollingInterval, setPollingInterval] = useState<number | null>(null);
 
   const handleImagesSelected = (files: File[]) => {
     setUploadedImages(files);
@@ -35,6 +41,10 @@ const Index = () => {
     // Create preview URLs for original images
     const imagePreviews = files.map(file => URL.createObjectURL(file));
     setOriginalImagePreviews(imagePreviews);
+  };
+
+  const handleImageUrlsReady = (urls: string[]) => {
+    setOriginalImageUrls(urls);
   };
 
   const handleFurnitureSelected = (items: FurnitureItem[]) => {
@@ -52,7 +62,7 @@ const Index = () => {
   const isStepComplete = (step: string) => {
     switch (step) {
       case 'upload':
-        return uploadedImages.length > 0;
+        return uploadedImages.length > 0 && originalImageUrls.length > 0;
       case 'furniture':
         return selectedFurniture.length > 0;
       case 'instructions':
@@ -70,8 +80,41 @@ const Index = () => {
     }
   };
 
+  // Poll for project status updates
+  useEffect(() => {
+    if (currentProjectId && isProcessing) {
+      const interval = window.setInterval(async () => {
+        try {
+          const project = await getStagingProject(currentProjectId);
+          
+          if (project) {
+            if (project.status === 'completed') {
+              setStagedImageResults(project.staged_images);
+              setIsProcessing(false);
+              setIsComplete(true);
+              clearInterval(interval);
+              toast.success('Staging complete! Check out your results.');
+            } else if (project.status === 'failed') {
+              setIsProcessing(false);
+              clearInterval(interval);
+              toast.error('Staging failed. Please try again.');
+            }
+          }
+        } catch (error) {
+          console.error('Error polling project status:', error);
+        }
+      }, 5000); // Poll every 5 seconds
+      
+      setPollingInterval(interval);
+      
+      return () => {
+        if (interval) clearInterval(interval);
+      };
+    }
+  }, [currentProjectId, isProcessing]);
+
   const handleSubmit = async () => {
-    if (!isStepComplete('upload') || !isStepComplete('furniture') || !isStepComplete('instructions')) {
+    if (!isStepComplete('upload') || !isStepComplete('furniture') || !isStepComplete('instructions') || !user) {
       toast.error('Please complete all steps before submitting');
       return;
     }
@@ -79,20 +122,37 @@ const Index = () => {
     setIsProcessing(true);
     
     try {
-      // In a real application, we would send the images and data to a backend API
-      // For this demonstration, we'll simulate a processing delay and use the original images as results
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Create a new staging project
+      const furnitureIds = selectedFurniture.map(item => item.id);
       
-      // Mock staged results - in a real app, these would come from the backend
-      setStagedImageResults([...originalImagePreviews]);
+      const project = await createStagingProject(
+        user.id,
+        stagingInstructions,
+        furnitureIds,
+        originalImageUrls
+      );
       
-      setIsComplete(true);
-      toast.success('Staging complete! Check out your results.');
+      if (!project) {
+        throw new Error('Failed to create staging project');
+      }
+      
+      setCurrentProjectId(project.id);
+      
+      // Start the image generation process
+      const furnitureUrls = selectedFurniture.map(item => item.image_url);
+      
+      await generateStagedImages(
+        project.id,
+        originalImageUrls[0], // Use the first image as the main room image
+        furnitureUrls,
+        stagingInstructions
+      );
+      
+      toast.info('Staging request submitted. This may take a few minutes.');
     } catch (error) {
       console.error('Error processing staging request:', error);
-      toast.error('An error occurred while processing your request. Please try again.');
-    } finally {
       setIsProcessing(false);
+      toast.error('An error occurred while processing your request. Please try again.');
     }
   };
 
@@ -107,16 +167,45 @@ const Index = () => {
     setIsProcessing(false);
     setIsComplete(false);
     setOriginalImagePreviews([]);
+    setOriginalImageUrls([]);
     setStagedImageResults([]);
     setActiveTab('upload');
+    setCurrentProjectId(null);
+    
+    // Clear any polling interval
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      setPollingInterval(null);
+    }
     
     toast.info('Started a new staging project');
   };
 
-  const handleRegenerate = () => {
-    toast('This feature would regenerate the staging with different variations', {
-      description: 'In a production app, this would send a request to regenerate the results'
-    });
+  const handleRegenerate = async () => {
+    if (!currentProjectId || !user) {
+      toast.error('Cannot regenerate without an active project');
+      return;
+    }
+    
+    setIsProcessing(true);
+    setIsComplete(false);
+    
+    try {
+      const furnitureUrls = selectedFurniture.map(item => item.image_url);
+      
+      await generateStagedImages(
+        currentProjectId,
+        originalImageUrls[0],
+        furnitureUrls,
+        stagingInstructions
+      );
+      
+      toast.info('Regenerating staged room. This may take a few minutes.');
+    } catch (error) {
+      console.error('Error regenerating staged room:', error);
+      setIsProcessing(false);
+      toast.error('An error occurred while regenerating. Please try again.');
+    }
   };
 
   if (isComplete) {
@@ -127,7 +216,7 @@ const Index = () => {
           <div className="max-w-5xl mx-auto pt-12">
             <h1 className="text-3xl font-semibold text-center mb-8">Your Staged Room</h1>
             <ResultsDisplay 
-              originalImages={originalImagePreviews}
+              originalImages={originalImageUrls}
               stagedImages={stagedImageResults}
               onRegenerate={handleRegenerate}
               onReset={handleReset}
@@ -208,7 +297,10 @@ const Index = () => {
                     </p>
                   </div>
                   
-                  <ImageUpload onImagesSelected={handleImagesSelected} />
+                  <ImageUpload 
+                    onImagesSelected={handleImagesSelected} 
+                    onImageUrlsReady={handleImageUrlsReady}
+                  />
                   
                   <div className="flex justify-end">
                     <Button 

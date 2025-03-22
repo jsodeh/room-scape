@@ -1,6 +1,5 @@
 
-import { supabase } from '@/lib/supabase';
-import { FurnitureItem } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 // Generate a unique filename with original extension
@@ -109,6 +108,36 @@ export const createStagingProject = async (
   }
 };
 
+// Generate staged images using Stability AI
+export const generateStagedImages = async (
+  projectId: string,
+  roomImageUrl: string,
+  furnitureUrls: string[],
+  instructions: string
+) => {
+  try {
+    const { data, error } = await supabase.functions
+      .invoke('generate-staged-room', {
+        body: {
+          projectId,
+          roomImageUrl,
+          furnitureUrls,
+          instructions
+        }
+      });
+    
+    if (error) {
+      throw error;
+    }
+    
+    return data.project;
+  } catch (error: any) {
+    toast.error(`Error generating staged images: ${error.message}`);
+    console.error('Error generating staged images:', error);
+    return null;
+  }
+};
+
 // Get staging project by ID
 export const getStagingProject = async (projectId: string) => {
   try {
@@ -150,3 +179,26 @@ export const getUserStagingProjects = async (userId: string) => {
     return [];
   }
 };
+
+// Define types for our database tables
+export interface FurnitureItem {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  image_url: string;
+  created_at?: string;
+}
+
+export interface StagingProject {
+  id: string;
+  user_id: string;
+  title: string;
+  instructions: string;
+  furniture_ids: string[];
+  original_images: string[];
+  staged_images: string[];
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  created_at?: string;
+  updated_at?: string;
+}
