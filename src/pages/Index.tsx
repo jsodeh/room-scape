@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TabsWrapper, TabsContent, TabsList, TabsTrigger } from '@/components/TabsWrapper';
 import { 
   ArrowRight, 
   Upload, 
@@ -162,7 +162,7 @@ const Index = () => {
             </p>
           </div>
           
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsWrapper value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid grid-cols-3 mb-8">
               <TabsTrigger 
                 value="upload" 
@@ -290,7 +290,7 @@ const Index = () => {
                 </div>
               </TabsContent>
             </div>
-          </Tabs>
+          </TabsWrapper>
         </div>
       </main>
       
