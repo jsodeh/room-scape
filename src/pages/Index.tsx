@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { TabsWrapper, TabsContent, TabsList, TabsTrigger } from '@/components/TabsWrapper';
@@ -17,15 +16,7 @@ import ImageUpload from '@/components/ImageUpload';
 import FurnitureSelector from '@/components/FurnitureSelector';
 import StageInstructions from '@/components/StageInstructions';
 import ResultsDisplay from '@/components/ResultsDisplay';
-
-// Mock furniture items type from FurnitureSelector
-type FurnitureItem = {
-  id: number;
-  name: string;
-  category: string;
-  description: string;
-  image: string;
-};
+import { FurnitureItem } from '@/lib/supabase';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('upload');
