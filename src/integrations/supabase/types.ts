@@ -320,10 +320,46 @@ export type Database = {
         }
         Relationships: []
       }
+      project_feedback: {
+        Row: {
+          comments: string | null
+          created_at: string | null
+          id: string
+          project_id: string
+          rating: number
+          user_id: string
+        }
+        Insert: {
+          comments?: string | null
+          created_at?: string | null
+          id?: string
+          project_id: string
+          rating: number
+          user_id: string
+        }
+        Update: {
+          comments?: string | null
+          created_at?: string | null
+          id?: string
+          project_id?: string
+          rating?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_feedback_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "staging_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staging_projects: {
         Row: {
           created_at: string
           furniture_ids: string[]
+          has_feedback: boolean | null
           id: string
           instructions: string | null
           original_images: string[]
@@ -336,6 +372,7 @@ export type Database = {
         Insert: {
           created_at?: string
           furniture_ids?: string[]
+          has_feedback?: boolean | null
           id?: string
           instructions?: string | null
           original_images?: string[]
@@ -348,6 +385,7 @@ export type Database = {
         Update: {
           created_at?: string
           furniture_ids?: string[]
+          has_feedback?: boolean | null
           id?: string
           instructions?: string | null
           original_images?: string[]

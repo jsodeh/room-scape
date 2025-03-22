@@ -4,9 +4,9 @@ import { toast } from 'sonner';
 import { 
   createStagingProject, 
   generateStagedImages, 
-  getStagingProject,
-  FurnitureItem
-} from '@/services/storageService';
+  getStagingProject
+} from '@/services/stagingService';
+import { FurnitureItem } from '@/types/database';
 
 interface StagingProcessorProps {
   userId?: string;

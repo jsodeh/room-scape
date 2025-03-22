@@ -11,6 +11,7 @@ import ProjectsList from '@/components/projects/ProjectsList';
 import { getUserStagingProjects } from '@/services/stagingService';
 import { StagingProject } from '@/types/database';
 import { Loader2 } from 'lucide-react';
+import FeedbackForm from '@/components/profile/FeedbackForm';
 
 const Profile = () => {
   const { user } = useAuth();
