@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { toast } from 'sonner';
 import Header from '@/components/Header';
@@ -15,6 +14,7 @@ const StagingContent = () => {
     uploadedImages,
     selectedFurniture,
     stagingInstructions,
+    referenceImageUrl,
     isProcessing,
     isComplete,
     originalImageUrls,
@@ -32,6 +32,7 @@ const StagingContent = () => {
     originalImageUrls,
     selectedFurniture,
     stagingInstructions,
+    referenceImageUrl,
     currentProjectId,
     setCurrentProjectId,
     setStagedImageResults,

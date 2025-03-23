@@ -16,7 +16,8 @@ export const createStagingProject = async (
   userId: string,
   instructions: string,
   furnitureIds: string[],
-  originalImageUrls: string[]
+  originalImageUrls: string[],
+  referenceImageUrl?: string
 ) => {
   try {
     const { data, error } = await supabase
@@ -26,6 +27,7 @@ export const createStagingProject = async (
         instructions,
         furniture_ids: furnitureIds,
         original_images: originalImageUrls,
+        reference_image: referenceImageUrl,
         staged_images: [],
         status: 'pending',
       })
@@ -49,7 +51,8 @@ export const generateStagedImages = async (
   projectId: string,
   roomImageUrl: string,
   furnitureUrls: string[],
-  instructions: string
+  instructions: string,
+  referenceImageUrl?: string
 ) => {
   try {
     const { data, error } = await supabase.functions
@@ -58,7 +61,8 @@ export const generateStagedImages = async (
           projectId,
           roomImageUrl,
           furnitureUrls,
-          instructions
+          instructions,
+          referenceImageUrl
         }
       });
     

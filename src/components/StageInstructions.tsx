@@ -1,14 +1,15 @@
-
 import { useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Upload, Plus, X, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
+import { uploadImage } from '@/services/fileStorageService';
 
 interface StageInstructionsProps {
   onInstructionsChange: (instructions: string) => void;
   onReferenceImageChange: (file: File | null) => void;
+  onReferenceImageUpload?: (url: string | null) => void;
 }
 
 const STYLE_PRESETS = [
@@ -31,11 +32,16 @@ const INSTRUCTION_EXAMPLES = [
   'Keep the space minimal and clean',
 ];
 
-const StageInstructions = ({ onInstructionsChange, onReferenceImageChange }: StageInstructionsProps) => {
+const StageInstructions = ({ 
+  onInstructionsChange, 
+  onReferenceImageChange,
+  onReferenceImageUpload 
+}: StageInstructionsProps) => {
   const [instructions, setInstructions] = useState('');
   const [referenceImage, setReferenceImage] = useState<File | null>(null);
   const [referenceImagePreview, setReferenceImagePreview] = useState<string | null>(null);
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleInstructionsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInstructions(e.target.value);
@@ -63,7 +69,7 @@ const StageInstructions = ({ onInstructionsChange, onReferenceImageChange }: Sta
     onInstructionsChange(updatedInstructions);
   };
 
-  const handleReferenceImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleReferenceImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
@@ -79,7 +85,26 @@ const StageInstructions = ({ onInstructionsChange, onReferenceImageChange }: Sta
       const imageUrl = URL.createObjectURL(file);
       setReferenceImagePreview(imageUrl);
       
-      toast.success('Reference image uploaded');
+      // Upload the reference image if the handler is provided
+      if (onReferenceImageUpload) {
+        setIsUploading(true);
+        try {
+          const uploadedUrl = await uploadImage(file, 'reference-images');
+          if (uploadedUrl) {
+            onReferenceImageUpload(uploadedUrl);
+            toast.success('Reference image uploaded');
+          } else {
+            throw new Error('Failed to upload reference image');
+          }
+        } catch (error) {
+          console.error('Error uploading reference image:', error);
+          toast.error('Failed to upload reference image');
+        } finally {
+          setIsUploading(false);
+        }
+      } else {
+        toast.success('Reference image selected');
+      }
     }
   };
 
@@ -91,6 +116,9 @@ const StageInstructions = ({ onInstructionsChange, onReferenceImageChange }: Sta
     setReferenceImage(null);
     setReferenceImagePreview(null);
     onReferenceImageChange(null);
+    if (onReferenceImageUpload) {
+      onReferenceImageUpload(null);
+    }
   };
 
   const addExampleInstruction = (example: string) => {
@@ -169,6 +197,7 @@ const StageInstructions = ({ onInstructionsChange, onReferenceImageChange }: Sta
               accept="image/*"
               className="hidden"
               onChange={handleReferenceImageChange}
+              disabled={isUploading}
             />
             <Label
               htmlFor="referenceImage"
@@ -177,7 +206,9 @@ const StageInstructions = ({ onInstructionsChange, onReferenceImageChange }: Sta
               <Upload className="h-8 w-8 text-gray-400 mb-3" />
               <span className="text-sm font-medium">Upload reference image</span>
               <span className="text-xs text-muted-foreground mt-1">JPG, PNG up to 10MB</span>
-              <Button className="mt-4" size="sm" variant="secondary">Choose Image</Button>
+              <Button className="mt-4" size="sm" variant="secondary" disabled={isUploading}>
+                {isUploading ? 'Uploading...' : 'Choose Image'}
+              </Button>
             </Label>
           </div>
         ) : (
@@ -193,6 +224,7 @@ const StageInstructions = ({ onInstructionsChange, onReferenceImageChange }: Sta
                 size="icon"
                 className="h-8 w-8"
                 onClick={removeReferenceImage}
+                disabled={isUploading}
               >
                 <X className="h-4 w-4" />
               </Button>

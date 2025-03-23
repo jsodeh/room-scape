@@ -16,6 +16,7 @@ export interface StagingProject {
   instructions: string;
   furniture_ids: string[];
   original_images: string[];
+  reference_image?: string;
   staged_images: string[];
   status: 'pending' | 'processing' | 'completed' | 'failed';
   has_feedback?: boolean;

@@ -1,12 +1,13 @@
 
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
-import { FurnitureItem } from '@/services/storageService';
+import { FurnitureItem } from '@/types/database';
 
 interface StagingContextType {
   uploadedImages: File[];
   selectedFurniture: FurnitureItem[];
   stagingInstructions: string;
   referenceImage: File | null;
+  referenceImageUrl: string | null;
   isProcessing: boolean;
   isComplete: boolean;
   originalImagePreviews: string[];
@@ -17,6 +18,7 @@ interface StagingContextType {
   setSelectedFurniture: (items: FurnitureItem[]) => void;
   setStagingInstructions: (instructions: string) => void;
   setReferenceImage: (file: File | null) => void;
+  setReferenceImageUrl: (url: string | null) => void;
   setOriginalImagePreviews: (previews: string[]) => void;
   setOriginalImageUrls: (urls: string[]) => void;
   setStagedImageResults: (results: string[]) => void;
@@ -28,6 +30,7 @@ interface StagingContextType {
   handleFurnitureSelected: (items: FurnitureItem[]) => void;
   handleInstructionsChange: (instructions: string) => void;
   handleReferenceImageChange: (file: File | null) => void;
+  handleReferenceImageUpload: (url: string | null) => void;
   resetState: () => void;
 }
 
@@ -38,6 +41,7 @@ export function StagingProvider({ children }: { children: ReactNode }) {
   const [selectedFurniture, setSelectedFurniture] = useState<FurnitureItem[]>([]);
   const [stagingInstructions, setStagingInstructions] = useState('');
   const [referenceImage, setReferenceImage] = useState<File | null>(null);
+  const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [originalImagePreviews, setOriginalImagePreviews] = useState<string[]>([]);
@@ -79,6 +83,10 @@ export function StagingProvider({ children }: { children: ReactNode }) {
     setReferenceImage(file);
   };
 
+  const handleReferenceImageUpload = (url: string | null) => {
+    setReferenceImageUrl(url);
+  };
+
   const resetState = () => {
     // Clean up object URLs to prevent memory leaks
     originalImagePreviews.forEach(url => URL.revokeObjectURL(url));
@@ -87,6 +95,7 @@ export function StagingProvider({ children }: { children: ReactNode }) {
     setSelectedFurniture([]);
     setStagingInstructions('');
     setReferenceImage(null);
+    setReferenceImageUrl(null);
     setIsProcessing(false);
     setIsComplete(false);
     setOriginalImagePreviews([]);
@@ -108,6 +117,7 @@ export function StagingProvider({ children }: { children: ReactNode }) {
         selectedFurniture,
         stagingInstructions,
         referenceImage,
+        referenceImageUrl,
         isProcessing,
         isComplete,
         originalImagePreviews,
@@ -118,6 +128,7 @@ export function StagingProvider({ children }: { children: ReactNode }) {
         setSelectedFurniture,
         setStagingInstructions,
         setReferenceImage,
+        setReferenceImageUrl,
         setOriginalImagePreviews,
         setOriginalImageUrls,
         setStagedImageResults,
@@ -129,6 +140,7 @@ export function StagingProvider({ children }: { children: ReactNode }) {
         handleFurnitureSelected,
         handleInstructionsChange,
         handleReferenceImageChange,
+        handleReferenceImageUpload,
         resetState
       }}
     >

@@ -13,6 +13,7 @@ interface StagingProcessorProps {
   originalImageUrls: string[];
   selectedFurniture: FurnitureItem[];
   stagingInstructions: string;
+  referenceImageUrl: string | null;
   currentProjectId: string | null;
   setCurrentProjectId: (id: string | null) => void;
   setStagedImageResults: (results: string[]) => void;
@@ -25,6 +26,7 @@ export function useStagingProcessor({
   originalImageUrls,
   selectedFurniture,
   stagingInstructions,
+  referenceImageUrl,
   currentProjectId,
   setCurrentProjectId,
   setStagedImageResults,
@@ -106,7 +108,8 @@ export function useStagingProcessor({
         userId,
         stagingInstructions,
         furnitureIds,
-        originalImageUrls
+        originalImageUrls,
+        referenceImageUrl || undefined
       );
       
       if (!project) {
@@ -122,7 +125,8 @@ export function useStagingProcessor({
         project.id,
         originalImageUrls[0], // Use the first image as the main room image
         furnitureUrls,
-        stagingInstructions
+        stagingInstructions,
+        referenceImageUrl || undefined
       );
       
       toast.info('Staging request submitted. This may take a few minutes.');
@@ -149,7 +153,8 @@ export function useStagingProcessor({
         currentProjectId,
         originalImageUrls[0],
         furnitureUrls,
-        stagingInstructions
+        stagingInstructions,
+        referenceImageUrl || undefined
       );
       
       toast.info('Regenerating staged room. This may take a few minutes.');

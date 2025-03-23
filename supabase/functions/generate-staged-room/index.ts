@@ -21,7 +21,7 @@ serve(async (req) => {
   }
 
   try {
-    const { roomImageUrl, furnitureUrls, instructions, projectId } = await req.json();
+    const { roomImageUrl, furnitureUrls, instructions, projectId, referenceImageUrl } = await req.json();
 
     if (!roomImageUrl) {
       throw new Error("Room image URL is required");
@@ -35,6 +35,7 @@ serve(async (req) => {
     console.log("Room image:", roomImageUrl);
     console.log("Furniture items:", furnitureUrls.length);
     console.log("Instructions:", instructions);
+    console.log("Reference image:", referenceImageUrl || "None");
 
     // Update project status to processing
     await supabase
@@ -63,11 +64,15 @@ serve(async (req) => {
       prompt = prompt.slice(0, -1); // Remove trailing comma
     }
 
+    if (referenceImageUrl) {
+      prompt += ". Use the provided reference image as a style guide for the staging.";
+    }
+
     prompt += ". Make sure the final image looks photorealistic and maintains the original room structure.";
 
     console.log("Final prompt:", prompt);
 
-    // Call Stability AI API (using img2img endpoint)
+    // Prepare API request based on whether we have a reference image
     const formData = new FormData();
     formData.append("init_image", new Blob([roomImageData], { type: "image/jpeg" }));
     formData.append("text_prompts[0][text]", prompt);
@@ -76,6 +81,20 @@ serve(async (req) => {
     formData.append("clip_guidance_preset", "FAST_BLUE");
     formData.append("samples", "1");
     formData.append("steps", "30");
+
+    // If we have a reference image, add it as a style reference
+    if (referenceImageUrl) {
+      try {
+        const refImageResponse = await fetch(referenceImageUrl);
+        const refImageData = await refImageResponse.arrayBuffer();
+        
+        // Add the reference image to the request
+        formData.append("style_preset", "photographic");
+        formData.append("style_reference_image", new Blob([refImageData], { type: "image/jpeg" }));
+      } catch (refError) {
+        console.error("Error processing reference image, continuing without it:", refError);
+      }
+    }
 
     const stabilityResponse = await fetch(
       "https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/image-to-image",
