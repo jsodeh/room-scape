@@ -33,8 +33,8 @@ serve(async (req) => {
 
     console.log("Processing stage request for project:", projectId);
     console.log("Room image:", roomImageUrl);
-    console.log("Furniture items:", furnitureUrls.length);
-    console.log("Instructions:", instructions);
+    console.log("Furniture items:", furnitureUrls?.length || 0);
+    console.log("Instructions:", instructions || "None provided");
     console.log("Reference image:", referenceImageUrl || "None");
 
     // Update project status to processing
@@ -50,18 +50,25 @@ serve(async (req) => {
     // Create a detailed prompt based on instructions and furniture
     let prompt = "Virtually stage this room";
     
-    if (instructions) {
+    // If user provided instructions, use them as the primary guide
+    if (instructions && instructions.trim().length > 0) {
       prompt += `: ${instructions}`;
+    } else {
+      // Default instructions if none provided
+      prompt += " with modern, stylish furniture. Create an inviting space with appropriate furnishings.";
     }
     
+    // Add furniture details if available
     if (furnitureUrls && furnitureUrls.length > 0) {
-      prompt += ". Include the following furniture items:";
-      for (const url of furnitureUrls) {
-        // Extract furniture name from URL or use generic description
-        const furnitureName = url.split('/').pop()?.split('.')[0]?.replace(/-/g, ' ') || "selected item";
-        prompt += ` ${furnitureName},`;
+      if (!instructions || !instructions.includes("furniture")) {
+        prompt += ". Include the following furniture items:";
+        for (const url of furnitureUrls) {
+          // Extract furniture name from URL or use generic description
+          const furnitureName = url.split('/').pop()?.split('.')[0]?.replace(/-/g, ' ') || "selected item";
+          prompt += ` ${furnitureName},`;
+        }
+        prompt = prompt.slice(0, -1); // Remove trailing comma
       }
-      prompt = prompt.slice(0, -1); // Remove trailing comma
     }
 
     if (referenceImageUrl) {

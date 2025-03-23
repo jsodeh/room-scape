@@ -26,8 +26,12 @@ const StagingWizard = ({ onSubmit }: StagingWizardProps) => {
       case 'upload':
         return uploadedImages.length > 0 && originalImageUrls.length > 0;
       case 'furniture':
+        // Furniture selection is now optional, but we still want to 
+        // show the completion indicator if they've selected something
         return selectedFurniture.length > 0;
       case 'instructions':
+        // Instructions are now optional, but we still want to
+        // show the completion indicator if they've entered something
         return stagingInstructions.trim().length > 0;
       default:
         return false;
@@ -37,7 +41,8 @@ const StagingWizard = ({ onSubmit }: StagingWizardProps) => {
   const goToNextStep = () => {
     if (activeTab === 'upload' && isStepComplete('upload')) {
       setActiveTab('furniture');
-    } else if (activeTab === 'furniture' && isStepComplete('furniture')) {
+    } else if (activeTab === 'furniture') {
+      // Allow going to instructions even if no furniture is selected
       setActiveTab('instructions');
     }
   };
@@ -75,7 +80,7 @@ const StagingWizard = ({ onSubmit }: StagingWizardProps) => {
         <TabsTrigger 
           value="instructions" 
           className="data-[state=active]:shadow-sm relative"
-          disabled={!isStepComplete('furniture')}
+          disabled={!isStepComplete('upload')}
         >
           <span className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />

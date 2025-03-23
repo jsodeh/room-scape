@@ -88,14 +88,24 @@ export function useStagingProcessor({
       return;
     }
 
+    // Allow empty furniture selection but provide a warning
     if (selectedFurniture.length === 0) {
-      toast.error('Please select at least one furniture item');
-      return;
+      toast.warning('No furniture selected. We will stage the room based on your instructions only.');
     }
 
-    if (stagingInstructions.trim().length === 0) {
-      toast.error('Please provide staging instructions');
-      return;
+    // If no instructions are provided, create a default prompt
+    let finalInstructions = stagingInstructions.trim();
+    if (finalInstructions.length === 0) {
+      if (selectedFurniture.length > 0) {
+        // Create instructions based on selected furniture
+        const furnitureTypes = [...new Set(selectedFurniture.map(item => item.category || 'item'))];
+        finalInstructions = `Stage this room with ${furnitureTypes.join(', ')}. Make it look stylish and photorealistic.`;
+        toast.info('Using auto-generated instructions based on your furniture selection.');
+      } else {
+        // Default instructions if nothing is provided
+        finalInstructions = 'Stage this room to look modern, stylish, and inviting with appropriate furniture.';
+        toast.info('Using default staging instructions.');
+      }
     }
     
     setIsProcessing(true);
@@ -106,7 +116,7 @@ export function useStagingProcessor({
       
       const project = await createStagingProject(
         userId,
-        stagingInstructions,
+        finalInstructions,
         furnitureIds,
         originalImageUrls,
         referenceImageUrl || undefined
@@ -125,7 +135,7 @@ export function useStagingProcessor({
         project.id,
         originalImageUrls[0], // Use the first image as the main room image
         furnitureUrls,
-        stagingInstructions,
+        finalInstructions,
         referenceImageUrl || undefined
       );
       
@@ -149,11 +159,22 @@ export function useStagingProcessor({
     try {
       const furnitureUrls = selectedFurniture.map(item => item.image_url);
       
+      // Use the same logic for empty instructions as in handleSubmit
+      let finalInstructions = stagingInstructions.trim();
+      if (finalInstructions.length === 0) {
+        if (selectedFurniture.length > 0) {
+          const furnitureTypes = [...new Set(selectedFurniture.map(item => item.category || 'item'))];
+          finalInstructions = `Stage this room with ${furnitureTypes.join(', ')}. Make it look stylish and photorealistic.`;
+        } else {
+          finalInstructions = 'Stage this room to look modern, stylish, and inviting with appropriate furniture.';
+        }
+      }
+      
       await generateStagedImages(
         currentProjectId,
         originalImageUrls[0],
         furnitureUrls,
-        stagingInstructions,
+        finalInstructions,
         referenceImageUrl || undefined
       );
       
