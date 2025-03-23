@@ -10,11 +10,17 @@ import { useAuth } from '@/context/AuthContext';
 import { Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+// Define the tab structure for TypeScript
+interface ProfileTab {
+  id: string;
+  label: string;
+}
+
 const Profile = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("account");
 
-  const tabs = [
+  const tabs: ProfileTab[] = [
     { id: "account", label: "Account" },
     { id: "projects", label: "Projects" },
   ];
@@ -24,6 +30,7 @@ const Profile = () => {
       case "account":
         return <ProfileForm user={user} />;
       case "projects":
+        // No props needed for ProjectsList component
         return <ProjectsList />;
       default:
         return <ProfileForm user={user} />;
@@ -50,7 +57,6 @@ const Profile = () => {
           
           {user ? (
             <TabsWrapper
-              tabs={tabs}
               activeTab={activeTab}
               setActiveTab={setActiveTab}
               renderContent={renderTabContent}
