@@ -3,6 +3,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { StagingProject } from '@/types/database';
 
+// Type guard to ensure status conforms to our union type
+const validateProjectStatus = (status: string): 'pending' | 'processing' | 'completed' | 'failed' => {
+  if (status === 'pending' || status === 'processing' || status === 'completed' || status === 'failed') {
+    return status;
+  }
+  return 'pending'; // Default fallback
+};
+
 // Create a new staging project
 export const createStagingProject = async (
   userId: string,
@@ -67,7 +75,7 @@ export const generateStagedImages = async (
 };
 
 // Get staging project by ID
-export const getStagingProject = async (projectId: string) => {
+export const getStagingProject = async (projectId: string): Promise<StagingProject | null> => {
   try {
     const { data, error } = await supabase
       .from('staging_projects')
@@ -79,7 +87,11 @@ export const getStagingProject = async (projectId: string) => {
       throw error;
     }
     
-    return data;
+    // Ensure the status conforms to our type
+    return {
+      ...data,
+      status: validateProjectStatus(data.status)
+    };
   } catch (error: any) {
     toast.error(`Error fetching staging project: ${error.message}`);
     console.error('Error fetching staging project:', error);
@@ -88,7 +100,7 @@ export const getStagingProject = async (projectId: string) => {
 };
 
 // Get all staging projects for a user
-export const getUserStagingProjects = async (userId: string) => {
+export const getUserStagingProjects = async (userId: string): Promise<StagingProject[]> => {
   try {
     const { data, error } = await supabase
       .from('staging_projects')
@@ -100,7 +112,11 @@ export const getUserStagingProjects = async (userId: string) => {
       throw error;
     }
     
-    return data || [];
+    // Ensure all project statuses conform to our type
+    return (data || []).map(project => ({
+      ...project,
+      status: validateProjectStatus(project.status)
+    }));
   } catch (error: any) {
     toast.error(`Error fetching user staging projects: ${error.message}`);
     console.error('Error fetching user staging projects:', error);

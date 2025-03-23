@@ -19,7 +19,7 @@ export interface StagingProject {
   staged_images: string[];
   status: 'pending' | 'processing' | 'completed' | 'failed';
   has_feedback?: boolean;
-  created_at?: string;
+  created_at: string;
   updated_at?: string;
 }
 
@@ -29,5 +29,5 @@ export interface ProjectFeedback {
   user_id: string;
   rating: number;
   comments?: string;
-  created_at?: string;
+  created_at: string;
 }

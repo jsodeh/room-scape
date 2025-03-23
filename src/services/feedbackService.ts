@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/context/AuthContext';
 
 interface FeedbackData {
   rating: number;
@@ -9,10 +10,18 @@ interface FeedbackData {
 
 export const submitProjectFeedback = async (projectId: string, feedbackData: FeedbackData) => {
   try {
+    // Get the current authenticated user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      throw new Error('User must be authenticated to submit feedback');
+    }
+    
     const { error } = await supabase
       .from('project_feedback')
       .insert({
         project_id: projectId,
+        user_id: user.id,
         rating: feedbackData.rating,
         comments: feedbackData.comments,
       });
