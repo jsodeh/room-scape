@@ -5,7 +5,7 @@ import {
   DialogTitle, DialogFooter 
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { FurnitureItem } from '@/types/database';
 import { toast } from 'sonner';
 
@@ -106,29 +106,31 @@ const ResourceDialog = ({
             onSelectChange={handleSelectChange}
           />
           
-          <TabsContent value="image" className="mt-0 space-y-4">
-            <ImageResourceForm
-              imageUrl={currentItem.image_url}
-              onImagesSelected={handleImagesSelected}
-              onImageUrlsReady={handleImageUrlsReady}
-            />
-          </TabsContent>
-          
-          <TabsContent value="pdf" className="mt-0 space-y-4">
-            <PdfResourceForm
-              pdfUrl={currentItem.pdf_url}
-              onPdfChange={handlePdfChange}
-            />
-          </TabsContent>
-          
-          <TabsContent value="url" className="mt-0 space-y-4">
-            <UrlResourceForm
-              externalUrl={currentItem.external_url}
-              imageUrl={currentItem.image_url}
-              onInputChange={handleInputChange}
-              onImageChange={handleImageChange}
-            />
-          </TabsContent>
+          <Tabs value={resourceTab} onValueChange={handleResourceTypeChange as (value: string) => void}>
+            <TabsContent value="image" className="mt-0 space-y-4">
+              <ImageResourceForm
+                imageUrl={currentItem.image_url}
+                onImagesSelected={handleImagesSelected}
+                onImageUrlsReady={handleImageUrlsReady}
+              />
+            </TabsContent>
+            
+            <TabsContent value="pdf" className="mt-0 space-y-4">
+              <PdfResourceForm
+                pdfUrl={currentItem.pdf_url}
+                onPdfChange={handlePdfChange}
+              />
+            </TabsContent>
+            
+            <TabsContent value="url" className="mt-0 space-y-4">
+              <UrlResourceForm
+                externalUrl={currentItem.external_url}
+                imageUrl={currentItem.image_url}
+                onInputChange={handleInputChange}
+                onImageChange={handleImageChange}
+              />
+            </TabsContent>
+          </Tabs>
           
           <ResourceUploadProgress 
             isUploading={isUploading} 
