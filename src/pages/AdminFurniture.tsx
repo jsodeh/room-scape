@@ -11,8 +11,8 @@ import ResourceFilters from '@/components/admin/ResourceFilters';
 import ResourceGridView from '@/components/admin/ResourceGridView';
 import ResourceDialog from '@/components/admin/ResourceDialog';
 
-// Using a type assertion to prevent excessive type inference depth
-const initialItemState: Partial<FurnitureItem> = {
+// Define the initial state explicitly with concrete types to avoid excessive type inference
+const initialItemState = {
   name: '',
   category: '',
   description: '',
@@ -20,7 +20,7 @@ const initialItemState: Partial<FurnitureItem> = {
   resource_type: 'image' as const,
   external_url: '',
   pdf_url: '',
-};
+} as const;
 
 const AdminFurniture = () => {
   const [furniture, setFurniture] = useState<FurnitureItem[]>([]);
