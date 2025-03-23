@@ -14,16 +14,19 @@ export const useFurnitureItems = (
   const fetchFurnitureItems = async () => {
     setIsLoading(true);
     try {
+      // Start with base query
       let query = supabase.from('furniture_items').select('*');
       
+      // Apply category filter if not 'all'
       if (categoryFilter !== 'all') {
         query = query.eq('category', categoryFilter);
       }
       
+      // Apply resource type filter if not 'all'
       if (resourceTypeFilter !== 'all') {
-        // Fix the type depth issue by using a more explicit type annotation
-        const resourceType: string = resourceTypeFilter;
-        query = query.eq('resource_type', resourceType);
+        // Instead of chaining the method directly, use a simple string value
+        // This avoids the deep type instantiation
+        query = query.filter('resource_type', 'eq', resourceTypeFilter);
       }
       
       const { data, error } = await query.order('created_at', { ascending: false });
