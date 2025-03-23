@@ -21,7 +21,9 @@ export const useFurnitureItems = (
       }
       
       if (resourceTypeFilter !== 'all') {
-        query = query.eq('resource_type', resourceTypeFilter as string);
+        // Fix the type depth issue by using a more explicit type annotation
+        const resourceType: string = resourceTypeFilter;
+        query = query.eq('resource_type', resourceType);
       }
       
       const { data, error } = await query.order('created_at', { ascending: false });
