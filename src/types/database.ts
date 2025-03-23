@@ -22,6 +22,7 @@ export interface StagingProject {
   reference_image?: string;
   staged_images: string[];
   status: 'pending' | 'processing' | 'completed' | 'failed';
+  error_message?: string; // Added this property
   has_feedback?: boolean;
   created_at: string;
   updated_at?: string;
