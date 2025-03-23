@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,16 @@ import ResourceFilters from '@/components/admin/ResourceFilters';
 import ResourceGridView from '@/components/admin/ResourceGridView';
 import ResourceDialog from '@/components/admin/ResourceDialog';
 
+const initialItemState: Partial<FurnitureItem> = {
+  name: '',
+  category: '',
+  description: '',
+  image_url: '',
+  resource_type: 'image',
+  external_url: '',
+  pdf_url: '',
+};
+
 const AdminFurniture = () => {
   const [furniture, setFurniture] = useState<FurnitureItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -20,13 +29,7 @@ const AdminFurniture = () => {
   const [resourceTypeFilter, setResourceTypeFilter] = useState('all');
   
   // Form state
-  const [currentItem, setCurrentItem] = useState<Partial<FurnitureItem>>({
-    name: '',
-    category: '',
-    description: '',
-    image_url: '',
-    resource_type: 'image',
-  });
+  const [currentItem, setCurrentItem] = useState<Partial<FurnitureItem>>(initialItemState);
   const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
@@ -62,15 +65,7 @@ const AdminFurniture = () => {
   };
 
   const openAddDialog = () => {
-    setCurrentItem({
-      name: '',
-      category: '',
-      description: '',
-      image_url: '',
-      resource_type: 'image',
-      external_url: '',
-      pdf_url: '',
-    });
+    setCurrentItem(initialItemState);
     setIsEditMode(false);
     setIsDialogOpen(true);
   };
@@ -89,12 +84,10 @@ const AdminFurniture = () => {
     if (!file) return null;
 
     try {
-      // Create a unique filename
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       const filePath = `${folder}/${fileName}`;
       
-      // Upload to Supabase Storage
       const { data, error } = await supabase.storage
         .from(bucket)
         .upload(filePath, file, {
@@ -107,7 +100,6 @@ const AdminFurniture = () => {
         throw error;
       }
       
-      // Get the public URL
       const { data: urlData } = supabase.storage
         .from(bucket)
         .getPublicUrl(filePath);
@@ -128,16 +120,14 @@ const AdminFurniture = () => {
       return;
     }
 
-    // Validate based on resource type
     if (currentItem.resource_type === 'url' && !currentItem.external_url) {
       toast.error('URL is required for web resources');
       return;
     }
     
     try {
-      // Ensure required fields are present before sending to the database
       let itemData: FurnitureItem = {
-        id: currentItem.id || '', // Will be generated for new items
+        id: currentItem.id || '',
         name: currentItem.name,
         category: currentItem.category,
         description: currentItem.description || '',
@@ -148,7 +138,6 @@ const AdminFurniture = () => {
       };
       
       if (isEditMode && currentItem.id) {
-        // Update existing item
         const { error } = await supabase
           .from('furniture_items')
           .update(itemData)
@@ -157,7 +146,6 @@ const AdminFurniture = () => {
         if (error) throw error;
         toast.success('Furniture item updated successfully');
       } else {
-        // Create new item - remove id as it will be auto-generated
         const { id, ...newItemData } = itemData;
         const { error } = await supabase
           .from('furniture_items')
@@ -167,7 +155,6 @@ const AdminFurniture = () => {
         toast.success('Furniture item added successfully');
       }
       
-      // Refresh the list
       fetchFurnitureItems();
       closeDialog();
     } catch (error: any) {

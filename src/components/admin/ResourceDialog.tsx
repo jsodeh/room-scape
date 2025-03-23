@@ -4,20 +4,18 @@ import {
   Dialog, DialogContent, DialogHeader,
   DialogTitle, DialogFooter 
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { 
-  Select, SelectContent, SelectItem, 
-  SelectTrigger, SelectValue 
-} from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Image, FileText, Link as LinkIcon } from 'lucide-react';
+import { TabsContent } from '@/components/ui/tabs';
 import { FurnitureItem } from '@/types/database';
-import ImageUpload from '@/components/ImageUpload';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { FURNITURE_CATEGORIES } from './ResourceFilters';
+
+// Import our new components
+import ResourceTypeSelector from './ResourceTypeSelector';
+import ResourceBasicFields from './ResourceBasicFields';
+import ImageResourceForm from './ImageResourceForm';
+import PdfResourceForm from './PdfResourceForm';
+import UrlResourceForm from './UrlResourceForm';
+import ResourceUploadProgress from './ResourceUploadProgress';
 
 interface ResourceDialogProps {
   isOpen: boolean;
@@ -46,7 +44,7 @@ const ResourceDialog = ({
     if (isOpen) {
       // Set the resource tab based on the current item's resource type
       if (currentItem.resource_type) {
-        setResourceTab(currentItem.resource_type);
+        setResourceTab(currentItem.resource_type as 'image' | 'pdf' | 'url');
       }
     }
   }, [isOpen, currentItem]);
@@ -84,6 +82,11 @@ const ResourceDialog = ({
     }
   };
 
+  const handleResourceTypeChange = (value: 'image' | 'pdf' | 'url') => {
+    setResourceTab(value);
+    setCurrentItem(prev => ({...prev, resource_type: value}));
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
@@ -92,161 +95,45 @@ const ResourceDialog = ({
         </DialogHeader>
         
         <form onSubmit={onSave} className="space-y-4">
-          <div className="space-y-2">
-            <label htmlFor="resource_type" className="block text-sm font-medium">Resource Type</label>
-            <Tabs value={resourceTab} onValueChange={(value) => {
-              setResourceTab(value as 'image' | 'pdf' | 'url');
-              setCurrentItem(prev => ({...prev, resource_type: value as 'image' | 'pdf' | 'url'}));
-            }}>
-              <TabsList className="grid grid-cols-3 mb-2">
-                <TabsTrigger value="image" className="flex items-center gap-1">
-                  <Image className="h-4 w-4" />
-                  <span>Image</span>
-                </TabsTrigger>
-                <TabsTrigger value="pdf" className="flex items-center gap-1">
-                  <FileText className="h-4 w-4" />
-                  <span>PDF</span>
-                </TabsTrigger>
-                <TabsTrigger value="url" className="flex items-center gap-1">
-                  <LinkIcon className="h-4 w-4" />
-                  <span>Web URL</span>
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
+          <ResourceTypeSelector 
+            value={resourceTab} 
+            onChange={handleResourceTypeChange} 
+          />
           
-          <div className="space-y-2">
-            <label htmlFor="name" className="block text-sm font-medium">Name</label>
-            <Input
-              id="name"
-              name="name"
-              value={currentItem.name || ''}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <label htmlFor="category" className="block text-sm font-medium">Category</label>
-            <Select
-              value={currentItem.category || ''}
-              onValueChange={(value) => handleSelectChange('category', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                {FURNITURE_CATEGORIES.map(category => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className="space-y-2">
-            <label htmlFor="description" className="block text-sm font-medium">Description</label>
-            <Textarea
-              id="description"
-              name="description"
-              value={currentItem.description || ''}
-              onChange={handleInputChange}
-              rows={3}
-            />
-          </div>
+          <ResourceBasicFields
+            currentItem={currentItem}
+            onInputChange={handleInputChange}
+            onSelectChange={handleSelectChange}
+          />
           
           <TabsContent value="image" className="mt-0 space-y-4">
-            <div className="space-y-2">
-              <label className="block text-sm font-medium">Upload Image</label>
-              <ImageUpload
-                onImagesSelected={handleImagesSelected}
-                onImageUrlsReady={handleImageUrlsReady}
-                maxFiles={1}
-              />
-              {currentItem.image_url && !imageFile && (
-                <div className="mt-2">
-                  <p className="text-sm font-medium mb-2">Current Image:</p>
-                  <div className="h-28 w-28 rounded overflow-hidden border">
-                    <img
-                      src={currentItem.image_url}
-                      alt="Preview"
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
+            <ImageResourceForm
+              imageUrl={currentItem.image_url}
+              onImagesSelected={handleImagesSelected}
+              onImageUrlsReady={handleImageUrlsReady}
+            />
           </TabsContent>
           
           <TabsContent value="pdf" className="mt-0 space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="pdf" className="block text-sm font-medium">Upload PDF Document</label>
-              <Input
-                id="pdf"
-                type="file"
-                accept=".pdf"
-                onChange={handlePdfChange}
-              />
-              {currentItem.pdf_url && !pdfFile && (
-                <div className="mt-2 flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-blue-500" />
-                  <a 
-                    href={currentItem.pdf_url} 
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-500 hover:underline"
-                  >
-                    View current PDF
-                  </a>
-                </div>
-              )}
-            </div>
+            <PdfResourceForm
+              pdfUrl={currentItem.pdf_url}
+              onPdfChange={handlePdfChange}
+            />
           </TabsContent>
           
           <TabsContent value="url" className="mt-0 space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="external_url" className="block text-sm font-medium">Website URL</label>
-              <Input
-                id="external_url"
-                name="external_url"
-                type="url"
-                placeholder="https://example.com/furniture-item"
-                value={currentItem.external_url || ''}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="thumbnail" className="block text-sm font-medium">Thumbnail Image (Optional)</label>
-              <Input
-                id="image"
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-              />
-              {currentItem.image_url && !imageFile && (
-                <div className="mt-2">
-                  <p className="text-sm font-medium mb-2">Current Thumbnail:</p>
-                  <div className="h-28 w-28 rounded overflow-hidden border">
-                    <img
-                      src={currentItem.image_url}
-                      alt="Thumbnail"
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
+            <UrlResourceForm
+              externalUrl={currentItem.external_url}
+              imageUrl={currentItem.image_url}
+              onInputChange={handleInputChange}
+              onImageChange={handleImageChange}
+            />
           </TabsContent>
           
-          {isUploading && (
-            <div className="w-full bg-muted rounded-full h-2.5 mt-2">
-              <div 
-                className="bg-primary h-2.5 rounded-full transition-all duration-300" 
-                style={{ width: `${uploadProgress}%` }}
-              ></div>
-            </div>
-          )}
+          <ResourceUploadProgress 
+            isUploading={isUploading} 
+            uploadProgress={uploadProgress} 
+          />
           
           <DialogFooter className="gap-2 sm:gap-0">
             <Button type="button" variant="outline" onClick={onClose}>

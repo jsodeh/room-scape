@@ -4,38 +4,15 @@ import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ProfileForm from '@/components/profile/ProfileForm';
-import { TabsWrapper } from '@/components/TabsWrapper';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ProjectsList from '@/components/projects/ProjectsList';
 import { useAuth } from '@/context/AuthContext';
 import { Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-// Define the tab structure for TypeScript
-interface ProfileTab {
-  id: string;
-  label: string;
-}
-
 const Profile = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("account");
-
-  const tabs: ProfileTab[] = [
-    { id: "account", label: "Account" },
-    { id: "projects", label: "Projects" },
-  ];
-
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case "account":
-        return <ProfileForm user={user} />;
-      case "projects":
-        // No props needed for ProjectsList component
-        return <ProjectsList />;
-      default:
-        return <ProfileForm user={user} />;
-    }
-  };
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -56,11 +33,20 @@ const Profile = () => {
           </div>
           
           {user ? (
-            <TabsWrapper
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              renderContent={renderTabContent}
-            />
+            <Tabs defaultValue="account" value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-2 mb-8">
+                <TabsTrigger value="account">Account</TabsTrigger>
+                <TabsTrigger value="projects">Projects</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="account">
+                <ProfileForm user={user} />
+              </TabsContent>
+              
+              <TabsContent value="projects">
+                <ProjectsList projects={[]} />
+              </TabsContent>
+            </Tabs>
           ) : (
             <div className="text-center py-10">
               <p>Please sign in to view your profile.</p>
