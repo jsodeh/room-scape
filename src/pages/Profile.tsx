@@ -1,143 +1,69 @@
 
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 import ProfileForm from '@/components/profile/ProfileForm';
+import TabsWrapper from '@/components/TabsWrapper';
 import ProjectsList from '@/components/projects/ProjectsList';
-import { getUserStagingProjects } from '@/services/stagingService';
-import { StagingProject } from '@/types/database';
-import { Loader2 } from 'lucide-react';
-import FeedbackForm from '@/components/profile/FeedbackForm';
+import { useAuth } from '@/context/AuthContext';
+import { Shield } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const Profile = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const [projects, setProjects] = useState<StagingProject[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("account");
 
-  useEffect(() => {
-    const fetchProjects = async () => {
-      if (user?.id) {
-        setIsLoading(true);
-        try {
-          const userProjects = await getUserStagingProjects(user.id);
-          setProjects(userProjects);
-        } catch (error) {
-          console.error('Error fetching user projects:', error);
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
+  const tabs = [
+    { id: "account", label: "Account" },
+    { id: "projects", label: "Projects" },
+  ];
 
-    fetchProjects();
-  }, [user]);
-
-  if (!user) {
-    return null;
-  }
-
-  const userInitials = user.email ? user.email.substring(0, 2).toUpperCase() : 'U';
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "account":
+        return <ProfileForm />;
+      case "projects":
+        return <ProjectsList userId={user?.id} />;
+      default:
+        return <ProfileForm />;
+    }
+  };
 
   return (
-    <div className="container max-w-6xl py-8">
-      <div className="mb-8 flex flex-col items-center space-y-4 md:flex-row md:space-y-0 md:space-x-6">
-        <Avatar className="h-20 w-20">
-          <AvatarImage src={user.user_metadata?.avatar_url} />
-          <AvatarFallback className="text-lg">{userInitials}</AvatarFallback>
-        </Avatar>
-        <div>
-          <h1 className="text-2xl font-bold md:text-3xl">
-            {user.user_metadata?.full_name || user.email}
-          </h1>
-          <p className="text-muted-foreground">{user.email}</p>
-          <p className="text-sm text-muted-foreground">Member since {new Date(user.created_at).toLocaleDateString()}</p>
+    <div className="flex flex-col min-h-screen">
+      <Header />
+      
+      <main className="flex-1 py-16 px-4 container mx-auto">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl font-bold">Your Profile</h1>
+            
+            {/* Admin Panel Link */}
+            <Link to="/admin/furniture">
+              <Button variant="outline" className="gap-2">
+                <Shield className="h-4 w-4" />
+                Furniture Admin
+              </Button>
+            </Link>
+          </div>
+          
+          {user ? (
+            <TabsWrapper
+              tabs={tabs}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              renderContent={renderTabContent}
+            />
+          ) : (
+            <div className="text-center py-10">
+              <p>Please sign in to view your profile.</p>
+            </div>
+          )}
         </div>
-      </div>
-
-      <Tabs defaultValue="projects" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="projects">Projects</TabsTrigger>
-          <TabsTrigger value="settings">Profile Settings</TabsTrigger>
-          <TabsTrigger value="feedback">Feedback</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="projects" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Staging Projects</CardTitle>
-              <CardDescription>
-                View and manage all your virtual staging projects
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-              ) : (
-                <ProjectsList projects={projects} />
-              )}
-              
-              <div className="mt-6 flex justify-center">
-                <Button onClick={() => navigate('/')}>
-                  Create New Project
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="settings" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile Settings</CardTitle>
-              <CardDescription>
-                Update your profile information and preferences
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ProfileForm user={user} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="feedback" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Feedback & Reviews</CardTitle>
-              <CardDescription>
-                Rate your completed projects and provide feedback
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-              ) : projects.length > 0 ? (
-                <div className="space-y-4">
-                  {projects
-                    .filter(project => project.status === 'completed')
-                    .map(project => (
-                      <div key={project.id}>
-                        <FeedbackForm project={project} />
-                      </div>
-                    ))}
-                </div>
-              ) : (
-                <div className="py-8 text-center text-muted-foreground">
-                  You don't have any completed projects to review yet.
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      </main>
+      
+      <Footer />
     </div>
   );
 };
