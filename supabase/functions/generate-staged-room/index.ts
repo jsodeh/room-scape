@@ -7,6 +7,15 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const stabilityApiKey = Deno.env.get("STABILITY_API_KEY") || "";
 
+// Log configuration status (without revealing keys)
+console.log("Supabase URL configured:", !!supabaseUrl);
+console.log("Supabase Service Key configured:", !!supabaseServiceKey);
+console.log("Stability API Key configured:", !!stabilityApiKey);
+
+if (!stabilityApiKey) {
+  console.error("STABILITY_API_KEY is not configured. Please add it to your Supabase secrets.");
+}
+
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const corsHeaders = {
@@ -31,6 +40,10 @@ serve(async (req) => {
       throw new Error("Project ID is required");
     }
 
+    if (!stabilityApiKey) {
+      throw new Error("STABILITY_API_KEY is not configured");
+    }
+
     console.log("Processing stage request for project:", projectId);
     console.log("Room image:", roomImageUrl);
     console.log("Furniture items:", furnitureUrls?.length || 0);
@@ -44,8 +57,13 @@ serve(async (req) => {
       .eq("id", projectId);
 
     // Fetch the room image as binary data
+    console.log("Fetching room image...");
     const roomImageResponse = await fetch(roomImageUrl);
+    if (!roomImageResponse.ok) {
+      throw new Error(`Failed to fetch room image: ${roomImageResponse.status} ${roomImageResponse.statusText}`);
+    }
     const roomImageData = await roomImageResponse.arrayBuffer();
+    console.log("Room image fetched successfully, size:", roomImageData.byteLength);
 
     // Create a detailed prompt based on instructions and furniture
     let prompt = "Virtually stage this room";
@@ -92,17 +110,25 @@ serve(async (req) => {
     // If we have a reference image, add it as a style reference
     if (referenceImageUrl) {
       try {
+        console.log("Fetching reference image...");
         const refImageResponse = await fetch(referenceImageUrl);
-        const refImageData = await refImageResponse.arrayBuffer();
-        
-        // Add the reference image to the request
-        formData.append("style_preset", "photographic");
-        formData.append("style_reference_image", new Blob([refImageData], { type: "image/jpeg" }));
+        if (!refImageResponse.ok) {
+          console.error(`Failed to fetch reference image: ${refImageResponse.status} ${refImageResponse.statusText}`);
+          console.log("Continuing without reference image");
+        } else {
+          const refImageData = await refImageResponse.arrayBuffer();
+          console.log("Reference image fetched successfully, size:", refImageData.byteLength);
+          
+          // Add the reference image to the request
+          formData.append("style_preset", "photographic");
+          formData.append("style_reference_image", new Blob([refImageData], { type: "image/jpeg" }));
+        }
       } catch (refError) {
         console.error("Error processing reference image, continuing without it:", refError);
       }
     }
 
+    console.log("Sending request to Stability API...");
     const stabilityResponse = await fetch(
       "https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/image-to-image",
       {
@@ -118,6 +144,13 @@ serve(async (req) => {
     if (!stabilityResponse.ok) {
       const errorText = await stabilityResponse.text();
       console.error("Stability API error:", errorText);
+      
+      // Update the project status to failed
+      await supabase
+        .from("staging_projects")
+        .update({ status: "failed", error_message: `Stability API error: ${stabilityResponse.status} ${errorText}` })
+        .eq("id", projectId);
+        
       throw new Error(`Stability API error: ${stabilityResponse.status} ${errorText}`);
     }
 
@@ -164,6 +197,7 @@ serve(async (req) => {
         staged_images: stagedImages,
         status: "completed",
         updated_at: new Date(),
+        error_message: null, // Clear any previous error messages
       })
       .eq("id", projectId)
       .select()
@@ -174,6 +208,7 @@ serve(async (req) => {
       throw updateError;
     }
 
+    console.log("Project updated successfully with staged images");
     return new Response(
       JSON.stringify({ 
         success: true, 

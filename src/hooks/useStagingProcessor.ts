@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { 
@@ -34,6 +33,8 @@ export function useStagingProcessor({
   setIsComplete
 }: StagingProcessorProps) {
   const [pollingInterval, setPollingInterval] = useState<number | null>(null);
+  const [pollingCount, setPollingCount] = useState(0);
+  const [lastError, setLastError] = useState<string | null>(null);
 
   // Clean up polling interval on unmount
   useEffect(() => {
@@ -47,21 +48,49 @@ export function useStagingProcessor({
   // Poll for project status updates
   useEffect(() => {
     if (currentProjectId && setIsProcessing) {
+      const MAX_POLLING_COUNT = 60; // 5 minutes max (5000ms * 60)
+      
       const interval = window.setInterval(async () => {
         try {
+          setPollingCount(prev => prev + 1);
+          
+          // If we've been polling for too long, assume something went wrong
+          if (pollingCount > MAX_POLLING_COUNT) {
+            setIsProcessing(false);
+            clearInterval(interval);
+            toast.error('Staging timed out. Please try again with a smaller image or different instructions.');
+            console.error('Staging timed out after maximum polling attempts');
+            return;
+          }
+          
+          console.log(`Polling project status (attempt ${pollingCount})...`);
           const project = await getStagingProject(currentProjectId);
           
           if (project) {
             if (project.status === 'completed') {
-              setStagedImageResults(project.staged_images);
-              setIsProcessing(false);
-              setIsComplete(true);
-              clearInterval(interval);
-              toast.success('Staging complete! Check out your results.');
+              if (project.staged_images && project.staged_images.length > 0) {
+                setStagedImageResults(project.staged_images);
+                setIsProcessing(false);
+                setIsComplete(true);
+                clearInterval(interval);
+                toast.success('Staging complete! Check out your results.');
+                console.log('Staging completed successfully');
+              } else {
+                setIsProcessing(false);
+                clearInterval(interval);
+                toast.error('No images were generated. Please try again with different settings.');
+                console.error('Project marked as completed but no images were returned');
+              }
             } else if (project.status === 'failed') {
               setIsProcessing(false);
               clearInterval(interval);
-              toast.error('Staging failed. Please try again.');
+              const errorMessage = project.error_message || 'Staging failed. Please try again.';
+              toast.error(errorMessage);
+              console.error('Project failed with message:', errorMessage);
+              setLastError(errorMessage);
+            } else {
+              // Still processing, keep polling
+              console.log(`Project status: ${project.status}`);
             }
           }
         } catch (error) {
@@ -75,7 +104,7 @@ export function useStagingProcessor({
         if (interval) clearInterval(interval);
       };
     }
-  }, [currentProjectId, setIsProcessing, setStagedImageResults, setIsComplete]);
+  }, [currentProjectId, setIsProcessing, setStagedImageResults, setIsComplete, pollingCount]);
 
   const handleSubmit = async () => {
     if (!userId) {
@@ -88,6 +117,10 @@ export function useStagingProcessor({
       return;
     }
 
+    // Reset any previous errors
+    setLastError(null);
+    setPollingCount(0);
+    
     // Allow empty furniture selection but provide a warning
     if (selectedFurniture.length === 0) {
       toast.warning('No furniture selected. We will stage the room based on your instructions only.');
@@ -111,9 +144,17 @@ export function useStagingProcessor({
     setIsProcessing(true);
     
     try {
+      console.log('Starting staging process...');
+      console.log('User ID:', userId);
+      console.log('Original image URLs:', originalImageUrls);
+      console.log('Selected furniture count:', selectedFurniture.length);
+      console.log('Staging instructions:', finalInstructions);
+      console.log('Reference image URL:', referenceImageUrl);
+      
       // Create a new staging project
       const furnitureIds = selectedFurniture.map(item => item.id);
       
+      console.log('Creating staging project...');
       const project = await createStagingProject(
         userId,
         finalInstructions,
@@ -126,11 +167,13 @@ export function useStagingProcessor({
         throw new Error('Failed to create staging project');
       }
       
+      console.log('Project created with ID:', project.id);
       setCurrentProjectId(project.id);
       
       // Start the image generation process
       const furnitureUrls = selectedFurniture.map(item => item.image_url);
       
+      console.log('Generating staged images...');
       await generateStagedImages(
         project.id,
         originalImageUrls[0], // Use the first image as the main room image
@@ -140,6 +183,7 @@ export function useStagingProcessor({
       );
       
       toast.info('Staging request submitted. This may take a few minutes.');
+      console.log('Staging request submitted successfully');
     } catch (error) {
       console.error('Error processing staging request:', error);
       setIsProcessing(false);
@@ -152,6 +196,10 @@ export function useStagingProcessor({
       toast.error('Cannot regenerate without an active project');
       return;
     }
+    
+    // Reset error state and polling count
+    setLastError(null);
+    setPollingCount(0);
     
     setIsProcessing(true);
     setIsComplete(false);
@@ -170,6 +218,7 @@ export function useStagingProcessor({
         }
       }
       
+      console.log('Regenerating staged images for project:', currentProjectId);
       await generateStagedImages(
         currentProjectId,
         originalImageUrls[0],
@@ -188,6 +237,7 @@ export function useStagingProcessor({
 
   return {
     handleSubmit,
-    handleRegenerate
+    handleRegenerate,
+    lastError
   };
 }

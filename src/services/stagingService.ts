@@ -30,6 +30,7 @@ export const createStagingProject = async (
         reference_image: referenceImageUrl,
         staged_images: [],
         status: 'pending',
+        error_message: null,
       })
       .select()
       .single();
@@ -55,6 +56,14 @@ export const generateStagedImages = async (
   referenceImageUrl?: string
 ) => {
   try {
+    // Log the request details for debugging
+    console.log('Generating staged images with:');
+    console.log('- Project ID:', projectId);
+    console.log('- Room image URL:', roomImageUrl);
+    console.log('- Furniture URLs:', furnitureUrls.length);
+    console.log('- Instructions length:', instructions.length);
+    console.log('- Reference image URL:', referenceImageUrl || 'none');
+    
     const { data, error } = await supabase.functions
       .invoke('generate-staged-room', {
         body: {
@@ -67,6 +76,16 @@ export const generateStagedImages = async (
       });
     
     if (error) {
+      console.error('Edge function error:', error);
+      // Update the project with error info
+      await supabase
+        .from('staging_projects')
+        .update({ 
+          status: 'failed',
+          error_message: `Edge function error: ${error.message}`
+        })
+        .eq('id', projectId);
+      
       throw error;
     }
     
@@ -97,7 +116,6 @@ export const getStagingProject = async (projectId: string): Promise<StagingProje
       status: validateProjectStatus(data.status)
     };
   } catch (error: any) {
-    toast.error(`Error fetching staging project: ${error.message}`);
     console.error('Error fetching staging project:', error);
     return null;
   }
