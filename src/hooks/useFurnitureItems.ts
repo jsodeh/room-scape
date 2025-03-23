@@ -21,7 +21,7 @@ export const useFurnitureItems = (
       }
       
       if (resourceTypeFilter !== 'all') {
-        query = query.eq('resource_type', resourceTypeFilter);
+        query = query.eq('resource_type', resourceTypeFilter as string);
       }
       
       const { data, error } = await query.order('created_at', { ascending: false });
