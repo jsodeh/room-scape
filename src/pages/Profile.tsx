@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ProfileForm from '@/components/profile/ProfileForm';
-import TabsWrapper from '@/components/TabsWrapper';
+import { TabsWrapper } from '@/components/TabsWrapper';
 import ProjectsList from '@/components/projects/ProjectsList';
 import { useAuth } from '@/context/AuthContext';
 import { Shield } from 'lucide-react';
@@ -22,11 +22,11 @@ const Profile = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case "account":
-        return <ProfileForm />;
+        return <ProfileForm user={user} />;
       case "projects":
-        return <ProjectsList userId={user?.id} />;
+        return <ProjectsList />;
       default:
-        return <ProfileForm />;
+        return <ProfileForm user={user} />;
     }
   };
 
@@ -43,7 +43,7 @@ const Profile = () => {
             <Link to="/admin/furniture">
               <Button variant="outline" className="gap-2">
                 <Shield className="h-4 w-4" />
-                Furniture Admin
+                Resource Admin
               </Button>
             </Link>
           </div>

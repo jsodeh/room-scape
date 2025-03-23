@@ -6,6 +6,9 @@ export interface FurnitureItem {
   category: string;
   description: string;
   image_url: string;
+  resource_type?: 'image' | 'pdf' | 'url'; // Type of resource
+  external_url?: string; // External URL for web resources
+  pdf_url?: string; // URL for PDF resources
   created_at?: string;
 }
 
