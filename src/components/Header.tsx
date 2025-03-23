@@ -32,7 +32,7 @@ const Header = () => {
     <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
       <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="flex items-center space-x-2">
-          <span className="text-xl font-bold">VirtualStaging</span>
+          <span className="text-xl font-bold">RoomScapR</span>
         </Link>
 
         <div className="flex items-center gap-4">

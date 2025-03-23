@@ -15,9 +15,9 @@ const Auth = () => {
       <Card className="w-full max-w-md">
         <TabsWrapper value={activeTab} onValueChange={setActiveTab}>
           <CardHeader>
-            <CardTitle className="text-center text-2xl font-bold">RoomStage</CardTitle>
+            <CardTitle className="text-center text-2xl font-bold">RoomScapR</CardTitle>
             <CardDescription className="text-center">
-              Virtual room staging for real estate
+              Stage empty spaces in minutes
             </CardDescription>
             <TabsList className="grid w-full grid-cols-2 mt-4">
               <TabsTrigger value="signin">Sign In</TabsTrigger>

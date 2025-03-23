@@ -9,7 +9,7 @@ const Footer = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <Link to="/" className="text-xl font-semibold text-primary">RoomStage</Link>
+            <Link to="/" className="text-xl font-semibold text-primary">RoomScapR</Link>
             <p className="mt-4 text-sm text-gray-600">
               Transform empty spaces into beautifully staged properties with our cutting-edge AI technology.
             </p>
@@ -69,7 +69,7 @@ const Footer = () => {
         
         <div className="mt-12 pt-8 border-t border-gray-100">
           <p className="text-sm text-gray-500 text-center">
-            &copy; {currentYear} RoomStage. All rights reserved.
+            &copy; {currentYear} RoomScapR. All rights reserved.
           </p>
         </div>
       </div>
