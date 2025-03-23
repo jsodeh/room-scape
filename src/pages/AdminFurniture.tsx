@@ -15,7 +15,7 @@ const initialItemState: Partial<FurnitureItem> = {
   category: '',
   description: '',
   image_url: '',
-  resource_type: 'image',
+  resource_type: 'image' as const,
   external_url: '',
   pdf_url: '',
 };
@@ -28,7 +28,6 @@ const AdminFurniture = () => {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [resourceTypeFilter, setResourceTypeFilter] = useState('all');
   
-  // Form state
   const [currentItem, setCurrentItem] = useState<Partial<FurnitureItem>>(initialItemState);
   const [isEditMode, setIsEditMode] = useState(false);
 
