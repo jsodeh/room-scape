@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import ResourceFilters from '@/components/admin/ResourceFilters';
 import ResourceGridView from '@/components/admin/ResourceGridView';
 import ResourceDialog from '@/components/admin/ResourceDialog';
 
+// Using a type assertion to prevent excessive type inference depth
 const initialItemState: Partial<FurnitureItem> = {
   name: '',
   category: '',
