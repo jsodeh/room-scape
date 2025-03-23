@@ -46,8 +46,8 @@ serve(async (req) => {
 
     console.log("Processing stage request for project:", projectId);
     console.log("Room image:", roomImageUrl);
-    console.log("Furniture items:", furnitureUrls?.length || 0);
-    console.log("Instructions:", instructions || "None provided");
+    console.log("Furniture items count:", furnitureUrls?.length || 0);
+    console.log("Instructions length:", instructions?.length || 0);
     console.log("Reference image:", referenceImageUrl || "None");
 
     // Update project status to processing
@@ -60,7 +60,10 @@ serve(async (req) => {
     console.log("Fetching room image...");
     const roomImageResponse = await fetch(roomImageUrl);
     if (!roomImageResponse.ok) {
-      throw new Error(`Failed to fetch room image: ${roomImageResponse.status} ${roomImageResponse.statusText}`);
+      const errorMsg = `Failed to fetch room image: ${roomImageResponse.status} ${roomImageResponse.statusText}`;
+      console.error(errorMsg);
+      await updateProjectWithError(projectId, errorMsg);
+      throw new Error(errorMsg);
     }
     const roomImageData = await roomImageResponse.arrayBuffer();
     console.log("Room image fetched successfully, size:", roomImageData.byteLength);
@@ -97,7 +100,7 @@ serve(async (req) => {
 
     console.log("Final prompt:", prompt);
 
-    // Prepare API request based on whether we have a reference image
+    // Prepare API request
     const formData = new FormData();
     formData.append("init_image", new Blob([roomImageData], { type: "image/jpeg" }));
     formData.append("text_prompts[0][text]", prompt);
@@ -106,7 +109,7 @@ serve(async (req) => {
     formData.append("clip_guidance_preset", "FAST_BLUE");
     formData.append("samples", "1");
     formData.append("steps", "30");
-
+    
     // If we have a reference image, add it as a style reference
     if (referenceImageUrl) {
       try {
@@ -128,7 +131,19 @@ serve(async (req) => {
       }
     }
 
-    console.log("Sending request to Stability API...");
+    // Log API request details for debugging
+    console.log("Sending request to Stability API with endpoint: image-to-image");
+    console.log("API key configured:", !!stabilityApiKey);
+    console.log("Request parameters:", {
+      samples: 1,
+      steps: 30,
+      cfg_scale: 7,
+      clip_guidance_preset: "FAST_BLUE",
+      has_init_image: true,
+      has_style_reference: !!referenceImageUrl
+    });
+
+    // Make the API request to Stability AI
     const stabilityResponse = await fetch(
       "https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/image-to-image",
       {
@@ -141,21 +156,27 @@ serve(async (req) => {
       }
     );
 
+    // Handle API response
     if (!stabilityResponse.ok) {
       const errorText = await stabilityResponse.text();
-      console.error("Stability API error:", errorText);
+      console.error("Stability API error response status:", stabilityResponse.status);
+      console.error("Stability API error response body:", errorText);
       
-      // Update the project status to failed
-      await supabase
-        .from("staging_projects")
-        .update({ status: "failed", error_message: `Stability API error: ${stabilityResponse.status} ${errorText}` })
-        .eq("id", projectId);
-        
-      throw new Error(`Stability API error: ${stabilityResponse.status} ${errorText}`);
+      const errorMessage = `Stability API error: ${stabilityResponse.status} - ${errorText}`;
+      await updateProjectWithError(projectId, errorMessage);
+      throw new Error(errorMessage);
     }
 
     const stabilityResult = await stabilityResponse.json();
-    console.log("Stability API response received");
+    console.log("Stability API response received successfully");
+    console.log("Number of artifacts received:", stabilityResult.artifacts?.length || 0);
+
+    if (!stabilityResult.artifacts || stabilityResult.artifacts.length === 0) {
+      const errorMsg = "Stability API returned no images";
+      console.error(errorMsg);
+      await updateProjectWithError(projectId, errorMsg);
+      throw new Error(errorMsg);
+    }
 
     // Process and save the generated images
     const stagedImages = [];
@@ -168,6 +189,8 @@ serve(async (req) => {
       const timestamp = new Date().getTime();
       const fileName = `staged-${projectId}-${timestamp}.png`;
       const filePath = `staged-images/${fileName}`;
+      
+      console.log(`Uploading image to Supabase Storage: ${filePath}`);
       
       // Upload to Supabase Storage
       const { data, error } = await supabase.storage
@@ -188,6 +211,7 @@ serve(async (req) => {
         .getPublicUrl(filePath);
       
       stagedImages.push(publicUrlData.publicUrl);
+      console.log(`Image uploaded successfully. Public URL: ${publicUrlData.publicUrl}`);
     }
 
     // Update the project with generated images
@@ -234,3 +258,20 @@ serve(async (req) => {
     );
   }
 });
+
+// Helper function to update project with error status
+async function updateProjectWithError(projectId, errorMessage) {
+  try {
+    console.log(`Updating project ${projectId} with error: ${errorMessage}`);
+    await supabase
+      .from("staging_projects")
+      .update({ 
+        status: "failed",
+        error_message: errorMessage,
+        updated_at: new Date()
+      })
+      .eq("id", projectId);
+  } catch (updateError) {
+    console.error("Failed to update project with error status:", updateError);
+  }
+}
