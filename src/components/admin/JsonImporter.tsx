@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowDownToLine, FileJson, Loader2, Upload } from 'lucide-react';
+import { ArrowDownToLine, FileJson, Loader2, Upload, Download } from 'lucide-react';
 import { parseProductJson } from '@/services/jsonImportService';
 import { FurnitureItem } from '@/types/database';
 import { importFurnitureItems } from '@/services/furnitureService';
@@ -66,6 +66,7 @@ const JsonImporter = ({ onItemsExtracted }: JsonImporterProps) => {
     }
     
     setIsBatchImporting(true);
+    console.log(`Starting batch import of ${processedItems.length} items`);
     
     try {
       const success = await importFurnitureItems(processedItems);
@@ -76,9 +77,12 @@ const JsonImporter = ({ onItemsExtracted }: JsonImporterProps) => {
         setJsonContent('');
         setProcessedItems([]);
         setImportStats(null);
+      } else {
+        toast.error('Failed to import items. Please check the logs for more details.');
       }
     } catch (error: any) {
       toast.error(`Failed to import items: ${error.message}`);
+      console.error('Batch import error:', error);
     } finally {
       setIsBatchImporting(false);
     }
@@ -185,6 +189,7 @@ const JsonImporter = ({ onItemsExtracted }: JsonImporterProps) => {
                     </>
                   ) : (
                     <>
+                      <Download className="h-4 w-4" />
                       Import All {processedItems.length} Items
                     </>
                   )}

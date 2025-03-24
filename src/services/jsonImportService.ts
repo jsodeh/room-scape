@@ -43,6 +43,8 @@ export const parseProductJson = (jsonContent: string): ImportResult => {
       throw new Error('No products found in the JSON data.');
     }
     
+    console.log(`Found ${products.length} products in JSON data`);
+    
     // Transform the product data to our furniture format
     const furnitureItems = products.map(product => {
       // Extract the first category or use a default
@@ -77,6 +79,8 @@ export const parseProductJson = (jsonContent: string): ImportResult => {
     const validItems = furnitureItems.filter(item => 
       item.image_url && item.name && item.category
     );
+    
+    console.log(`Validated ${validItems.length} out of ${furnitureItems.length} items`);
     
     if (validItems.length === 0) {
       throw new Error('No valid items found. All items must have a name, category, and image URL.');

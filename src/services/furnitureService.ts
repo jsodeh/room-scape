@@ -49,26 +49,31 @@ export const importFurnitureItems = async (items: Partial<FurnitureItem>[]): Pro
     }
     
     // Filter out invalid items and convert to the correct format
-    const validItems = items.filter(validateFurnitureItem).map(({ id, ...item }) => ({
-      name: item.name!,
-      category: item.category!,
-      image_url: item.image_url!,
-      description: item.description || '',
-      resource_type: item.resource_type || 'image',
-      external_url: item.external_url || null,
-      pdf_url: item.pdf_url || null,
-      price: item.price || null
-    }));
+    const validItems = items
+      .filter(validateFurnitureItem)
+      .map(item => ({
+        name: item.name!,
+        category: item.category!,
+        image_url: item.image_url!,
+        description: item.description || '',
+        resource_type: item.resource_type || 'image',
+        external_url: item.external_url || null,
+        pdf_url: item.pdf_url || null,
+        price: item.price || null
+      }));
     
     if (validItems.length === 0) {
       throw new Error('No valid items to import. Items must have name, category, and image_url.');
     }
+    
+    console.log(`Attempting to import ${validItems.length} furniture items`, validItems);
     
     const { error } = await supabase
       .from('furniture_items')
       .insert(validItems);
     
     if (error) {
+      console.error('Error during furniture import:', error);
       throw error;
     }
     
