@@ -54,9 +54,6 @@ const JsonImporter = ({ onItemsExtracted }: JsonImporterProps) => {
       
       setProcessedItems(validItems);
       
-      // Remove the automatic extraction of the first item to avoid modal popup
-      // Only extract items when explicitly requested
-      
       toast.success(`Successfully processed ${validItems.length} items from JSON`);
     } catch (error: any) {
       console.error('JSON import error:', error);

@@ -57,11 +57,6 @@ export const importFurnitureItems = async (items: Partial<FurnitureItem>[]): Pro
         category: item.category!,
         image_url: item.image_url!,
         description: item.description || ''
-        // Removed fields that don't exist in the database schema:
-        // - resource_type
-        // - external_url
-        // - pdf_url
-        // - price
       }));
     
     if (validItems.length === 0) {
@@ -70,13 +65,24 @@ export const importFurnitureItems = async (items: Partial<FurnitureItem>[]): Pro
     
     console.log(`Attempting to import ${validItems.length} furniture items`, validItems);
     
-    const { error } = await supabase
-      .from('furniture_items')
-      .insert(validItems);
+    // Split into smaller batches to avoid payload size issues
+    const batchSize = 20;
+    const batches = [];
     
-    if (error) {
-      console.error('Error during furniture import:', error);
-      throw error;
+    for (let i = 0; i < validItems.length; i += batchSize) {
+      batches.push(validItems.slice(i, i + batchSize));
+    }
+    
+    // Process each batch sequentially
+    for (const batch of batches) {
+      const { error } = await supabase
+        .from('furniture_items')
+        .insert(batch);
+      
+      if (error) {
+        console.error('Error during furniture batch import:', error);
+        throw error;
+      }
     }
     
     toast.success(`Successfully imported ${validItems.length} furniture items`);
