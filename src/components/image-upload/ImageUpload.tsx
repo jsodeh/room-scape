@@ -10,9 +10,15 @@ interface ImageUploadProps {
   onImagesSelected: (files: File[]) => void;
   onImageUrlsReady?: (urls: string[]) => void;
   maxFiles?: number;
+  acceptedFileTypes?: string; // Accept mime type string like "image/*,application/pdf"
 }
 
-const ImageUpload = ({ onImagesSelected, onImageUrlsReady, maxFiles = 10 }: ImageUploadProps) => {
+const ImageUpload = ({ 
+  onImagesSelected, 
+  onImageUrlsReady, 
+  maxFiles = 10,
+  acceptedFileTypes = "image/*" 
+}: ImageUploadProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { 
@@ -25,7 +31,8 @@ const ImageUpload = ({ onImagesSelected, onImageUrlsReady, maxFiles = 10 }: Imag
   } = useImageUploader({
     onImagesSelected,
     onImageUrlsReady,
-    maxFiles
+    maxFiles,
+    acceptedFileTypes
   });
 
   const handleAddMore = () => {
@@ -40,19 +47,21 @@ const ImageUpload = ({ onImagesSelected, onImageUrlsReady, maxFiles = 10 }: Imag
       <DropZone 
         onFileSelect={handleFileSelect} 
         fileInputRef={fileInputRef}
+        acceptedFileTypes={acceptedFileTypes}
       />
 
       {previews.length > 0 && (
         <>
           <div className="flex items-center text-sm text-gray-500 gap-1">
             <Check className="h-4 w-4 text-green-500" />
-            <span>{selectedFiles.length} image{selectedFiles.length === 1 ? '' : 's'}</span>
+            <span>{selectedFiles.length} file{selectedFiles.length === 1 ? '' : 's'}</span>
           </div>
           
           <ImagePreview 
             previews={previews} 
             onRemove={removeFile} 
             onAddMore={handleAddMore} 
+            files={selectedFiles}
           />
 
           {onImageUrlsReady && (

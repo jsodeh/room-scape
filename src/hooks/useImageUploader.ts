@@ -7,23 +7,43 @@ interface UseImageUploaderProps {
   onImagesSelected: (files: File[]) => void;
   onImageUrlsReady?: (urls: string[]) => void;
   maxFiles?: number;
+  acceptedFileTypes?: string;
 }
 
-export const useImageUploader = ({ 
-  onImagesSelected, 
-  onImageUrlsReady, 
-  maxFiles = 10 
+export const useImageUploader = ({
+  onImagesSelected,
+  onImageUrlsReady,
+  maxFiles = 10,
+  acceptedFileTypes = "image/*"
 }: UseImageUploaderProps) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
 
+  const isFileTypeAccepted = (file: File): boolean => {
+    // Check if we accept all files
+    if (acceptedFileTypes === '*') return true;
+    
+    // Parse the accepted types
+    const types = acceptedFileTypes.split(',').map(type => type.trim());
+    
+    // Check if file type matches any of the accepted types
+    return types.some(type => {
+      if (type.endsWith('/*')) {
+        // Handle wildcards like 'image/*'
+        const mainType = type.split('/')[0];
+        return file.type.startsWith(`${mainType}/`);
+      }
+      return file.type === type;
+    });
+  };
+
   const handleFileSelect = (fileList: FileList) => {
     const files = Array.from(fileList);
-    const validFiles = files.filter(file => file.type.startsWith('image/'));
+    const validFiles = files.filter(isFileTypeAccepted);
     
     if (validFiles.length !== files.length) {
-      toast.warning('Some files were not images and were ignored');
+      toast.warning('Some files were not of the accepted type and were ignored');
     }
     
     if (validFiles.length === 0) {
@@ -31,7 +51,7 @@ export const useImageUploader = ({
     }
     
     if (selectedFiles.length + validFiles.length > maxFiles) {
-      toast.warning(`You can upload a maximum of ${maxFiles} images.`);
+      toast.warning(`You can upload a maximum of ${maxFiles} files.`);
       return;
     }
     
@@ -40,10 +60,17 @@ export const useImageUploader = ({
     onImagesSelected(newFiles);
     
     // Create preview URLs
-    const newPreviews = validFiles.map(file => URL.createObjectURL(file));
+    const newPreviews = validFiles.map(file => {
+      if (file.type === 'application/pdf') {
+        // For PDFs, we don't create a preview image from the file itself
+        return URL.createObjectURL(new Blob(['pdf'])); // Just a placeholder
+      }
+      return URL.createObjectURL(file);
+    });
+    
     setPreviews(prev => [...prev, ...newPreviews]);
     
-    toast.success(`${validFiles.length} image${validFiles.length === 1 ? '' : 's'} added`);
+    toast.success(`${validFiles.length} file${validFiles.length === 1 ? '' : 's'} added`);
   };
 
   const removeFile = (index: number) => {
@@ -63,7 +90,7 @@ export const useImageUploader = ({
 
   const handleUploadToStorage = async () => {
     if (selectedFiles.length === 0) {
-      toast.warning('No images selected for upload');
+      toast.warning('No files selected for upload');
       return;
     }
     
@@ -73,16 +100,16 @@ export const useImageUploader = ({
       const urls = await uploadMultipleImages(selectedFiles);
       
       if (urls.length > 0) {
-        toast.success(`${urls.length} image${urls.length === 1 ? '' : 's'} uploaded successfully`);
+        toast.success(`${urls.length} file${urls.length === 1 ? '' : 's'} uploaded successfully`);
         
         if (onImageUrlsReady) {
           onImageUrlsReady(urls);
         }
       } else {
-        toast.error('Failed to upload images');
+        toast.error('Failed to upload files');
       }
     } catch (error) {
-      toast.error('Error uploading images to storage');
+      toast.error('Error uploading files to storage');
       console.error('Upload error:', error);
     } finally {
       setUploading(false);

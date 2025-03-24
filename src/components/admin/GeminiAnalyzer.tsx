@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -191,6 +192,7 @@ const GeminiAnalyzer: React.FC<GeminiAnalyzerProps> = ({ onItemsExtracted }) => 
               <Label>Upload Product Image</Label>
               <ImageUpload
                 maxFiles={1}
+                acceptedFileTypes="image/*"
                 onImagesSelected={() => {}}
                 onImageUrlsReady={handleImageUrlsReady}
               />
@@ -215,6 +217,7 @@ const GeminiAnalyzer: React.FC<GeminiAnalyzerProps> = ({ onItemsExtracted }) => 
               <Label>Upload PDF Document</Label>
               <ImageUpload
                 maxFiles={1}
+                acceptedFileTypes="application/pdf"
                 onImagesSelected={() => {}}
                 onImageUrlsReady={handlePdfUrlsReady}
               />
@@ -258,6 +261,7 @@ const GeminiAnalyzer: React.FC<GeminiAnalyzerProps> = ({ onItemsExtracted }) => 
               <Label>Upload Multiple Product Images to Compare</Label>
               <ImageUpload
                 maxFiles={4}
+                acceptedFileTypes="image/*"
                 onImagesSelected={() => {}}
                 onImageUrlsReady={handleImageUrlsReady}
               />
