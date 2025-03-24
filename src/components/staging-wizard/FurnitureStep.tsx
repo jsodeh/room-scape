@@ -1,7 +1,7 @@
 
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
-import FurnitureSelector from '@/components/FurnitureSelector';
+import FurnitureSelector from '@/components/furniture/FurnitureSelector';
 import { useStagingContext } from '@/context/StagingContext';
 
 interface FurnitureStepProps {

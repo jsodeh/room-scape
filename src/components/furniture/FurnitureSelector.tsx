@@ -1,13 +1,13 @@
 
 import { useState, useEffect } from 'react';
-import { getFurnitureItems } from '@/services/storageService';
-import { FurnitureItem } from '@/lib/supabase';
-import FurnitureSearchBar from './furniture/FurnitureSearchBar';
-import FurnitureCategoryBar from './furniture/FurnitureCategoryBar';
-import FurnitureGrid from './furniture/FurnitureGrid';
-import CustomUploadPrompt from './furniture/CustomUploadPrompt';
-import SelectedItemsBar from './furniture/SelectedItemsBar';
-import CustomFurnitureUploader from './furniture/CustomFurnitureUploader';
+import { getFurnitureItems } from '@/services/furnitureService';
+import { FurnitureItem as FurnitureItemType } from '@/lib/supabase';
+import FurnitureSearchBar from './FurnitureSearchBar';
+import FurnitureCategoryBar from './FurnitureCategoryBar';
+import FurnitureGrid from './FurnitureGrid';
+import CustomUploadPrompt from './CustomUploadPrompt';
+import SelectedItemsBar from './SelectedItemsBar';
+import CustomFurnitureUploader from './CustomFurnitureUploader';
 
 // Categories remain static but furniture items will be fetched from Supabase
 const FURNITURE_CATEGORIES = [
@@ -23,15 +23,15 @@ const FURNITURE_CATEGORIES = [
 ];
 
 interface FurnitureSelectorProps {
-  onFurnitureSelected: (items: FurnitureItem[]) => void;
+  onFurnitureSelected: (items: FurnitureItemType[]) => void;
 }
 
 const FurnitureSelector = ({ onFurnitureSelected }: FurnitureSelectorProps) => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedItems, setSelectedItems] = useState<FurnitureItem[]>([]);
-  const [furnitureItems, setFurnitureItems] = useState<FurnitureItem[]>([]);
-  const [customItems, setCustomItems] = useState<FurnitureItem[]>([]);
+  const [selectedItems, setSelectedItems] = useState<FurnitureItemType[]>([]);
+  const [furnitureItems, setFurnitureItems] = useState<FurnitureItemType[]>([]);
+  const [customItems, setCustomItems] = useState<FurnitureItemType[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUploader, setShowUploader] = useState(false);
 
@@ -61,7 +61,7 @@ const FurnitureSelector = ({ onFurnitureSelected }: FurnitureSelectorProps) => {
     return matchesSearch;
   });
 
-  const toggleItemSelection = (item: FurnitureItem) => {
+  const toggleItemSelection = (item: FurnitureItemType) => {
     const isSelected = selectedItems.some(selectedItem => selectedItem.id === item.id);
     
     if (isSelected) {
@@ -77,7 +77,7 @@ const FurnitureSelector = ({ onFurnitureSelected }: FurnitureSelectorProps) => {
 
   const handleCustomImageUploaded = (imageUrl: string) => {
     // Create a custom furniture item
-    const newCustomItem: FurnitureItem = {
+    const newCustomItem: FurnitureItemType = {
       id: `custom-${Date.now()}`,
       name: 'Custom Furniture',
       category: 'custom',
