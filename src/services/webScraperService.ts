@@ -46,6 +46,7 @@ export const webScraperService = {
     try {
       const { url, limit = 100 } = options;
       
+      console.log('Calling web-scraper function with URL:', url);
       const response = await supabase.functions.invoke('web-scraper', {
         body: {
           url,
@@ -57,7 +58,11 @@ export const webScraperService = {
       if (response.error) {
         console.error('Error calling web-scraper function:', response.error);
         toast.error('Failed to crawl website: ' + response.error.message);
-        return { success: false, data: null, error: response.error.message };
+        return { 
+          success: false, 
+          data: { status: 'error', completed: 0, total: 0, pages: [] }, 
+          error: response.error.message 
+        };
       }
       
       // Check if the data structure is as expected
@@ -65,16 +70,40 @@ export const webScraperService = {
         const errorMessage = response.data?.error || 'Unknown error occurred';
         console.error('Web scraper returned error:', errorMessage);
         toast.error('Failed to crawl website: ' + errorMessage);
-        return { success: false, data: null, error: errorMessage };
+        return { 
+          success: false, 
+          data: { status: 'error', completed: 0, total: 0, pages: [] }, 
+          error: errorMessage 
+        };
       }
       
       // If we got here, the response was successful
       console.log('Crawl result:', response.data);
+      
+      // Check if we have actual crawled data
+      if (!response.data.data || !response.data.data.pages || response.data.data.pages.length === 0) {
+        console.warn('No pages found in crawl result');
+        toast.warning('No content was found on the provided website');
+        return {
+          success: true,
+          data: {
+            status: 'completed',
+            completed: 0,
+            total: 0,
+            pages: []
+          }
+        };
+      }
+      
       return response.data;
     } catch (error) {
       console.error('Error in crawlWebsite:', error);
       toast.error('Failed to crawl website: ' + (error.message || 'Unknown error'));
-      return { success: false, data: null, error: error.message };
+      return { 
+        success: false, 
+        data: { status: 'error', completed: 0, total: 0, pages: [] }, 
+        error: error.message 
+      };
     }
   },
   
@@ -84,9 +113,11 @@ export const webScraperService = {
     }
     
     const items: ScrapedFurnitureItem[] = [];
+    console.log('Extracting furniture items from crawl result');
     
     // First, try to use image analysis if available
     if (crawlResult.data.imageAnalysis && crawlResult.data.imageAnalysis.length > 0) {
+      console.log('Using image analysis results');
       crawlResult.data.imageAnalysis.forEach(analysis => {
         if (analysis.imageUrl && !analysis.error) {
           const name = analysis.title || getNameFromUrl(analysis.pageUrl);
@@ -98,12 +129,15 @@ export const webScraperService = {
             imageUrl: analysis.imageUrl,
             category: guessCategory(name, pageContent)
           });
+        } else if (analysis.error) {
+          console.warn('Skipping image with analysis error:', analysis.error);
         }
       });
     }
     
     // If no items were found from analysis, fall back to the original extraction method
     if (items.length === 0) {
+      console.log('No items from image analysis, falling back to basic extraction');
       // Process each page from the crawl result
       crawlResult.data.pages.forEach(page => {
         // Get images from the page
@@ -122,10 +156,13 @@ export const webScraperService = {
               category: guessCategory(name, page.content)
             });
           });
+        } else {
+          console.log(`No images found on page: ${page.url}`);
         }
       });
     }
     
+    console.log(`Extracted ${items.length} furniture items`);
     return items;
   }
 };

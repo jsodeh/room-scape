@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
   const authorization = req.headers.get('Authorization')
   if (!authorization) {
     return new Response(
-      JSON.stringify({ error: 'Missing Authorization header' }),
+      JSON.stringify({ success: false, error: 'Missing Authorization header' }),
       { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
 
     if (!url) {
       return new Response(
-        JSON.stringify({ error: 'Missing URL parameter' }),
+        JSON.stringify({ success: false, error: 'Missing URL parameter' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -42,26 +42,38 @@ Deno.serve(async (req) => {
     if (!FIRECRAWL_API_KEY) {
       console.error('Missing FIRECRAWL_API_KEY environment variable');
       return new Response(
-        JSON.stringify({ success: false, error: 'Server configuration error: Missing API key' }),
+        JSON.stringify({ success: false, error: 'Server configuration error: Missing Firecrawl API key' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     // Make the request to Firecrawl API
-    const crawlResponse = await fetch('https://api.firecrawl.dev/api/v1/crawl', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${FIRECRAWL_API_KEY}`
-      },
-      body: JSON.stringify({
-        url,
-        limit,
-        scrapeOptions: {
-          formats
-        }
-      })
-    });
+    let crawlResponse;
+    try {
+      crawlResponse = await fetch('https://api.firecrawl.dev/api/v1/crawl', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${FIRECRAWL_API_KEY}`
+        },
+        body: JSON.stringify({
+          url,
+          limit,
+          scrapeOptions: {
+            formats
+          }
+        })
+      });
+    } catch (fetchError) {
+      console.error('Fetch error when calling Firecrawl API:', fetchError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Network error when calling Firecrawl API: ${fetchError.message}` 
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     if (!crawlResponse.ok) {
       const errorText = await crawlResponse.text();
@@ -71,11 +83,23 @@ Deno.serve(async (req) => {
           success: false, 
           error: `Firecrawl API error: ${crawlResponse.status} ${errorText}` 
         }),
-        { status: crawlResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    const crawlData = await crawlResponse.json();
+    let crawlData;
+    try {
+      crawlData = await crawlResponse.json();
+    } catch (jsonError) {
+      console.error('Error parsing Firecrawl API response as JSON:', jsonError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Invalid JSON response from Firecrawl API: ${jsonError.message}` 
+        }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
     
     // Extract images for further analysis if Stability API key is available
     if (STABILITY_API_KEY && crawlData?.pages?.length > 0) {
@@ -110,7 +134,12 @@ Deno.serve(async (req) => {
           
           const imageAnalysisResults = await Promise.allSettled(
             imagesToAnalyze.map(async (image) => {
-              return await analyzeImageWithStability(image.url);
+              try {
+                return await analyzeImageWithStability(image.url);
+              } catch (err) {
+                console.error(`Error analyzing image ${image.url}:`, err);
+                throw err;
+              }
             })
           );
           
@@ -121,7 +150,7 @@ Deno.serve(async (req) => {
               title: imagesToAnalyze[index].title,
               pageUrl: imagesToAnalyze[index].pageUrl,
               analysis: result.status === 'fulfilled' ? result.value : null,
-              error: result.status === 'rejected' ? result.reason : null
+              error: result.status === 'rejected' ? String(result.reason) : null
             };
           });
         }
@@ -129,6 +158,8 @@ Deno.serve(async (req) => {
         console.error('Error during image analysis:', analysisError);
         // Continue with the crawl data even if image analysis fails
       }
+    } else if (!STABILITY_API_KEY) {
+      console.log('Stability API key not provided - skipping image analysis');
     }
     
     return new Response(
@@ -168,6 +199,7 @@ async function analyzeImageWithStability(imageUrl: string) {
   }
 
   try {
+    console.log(`Fetching image from URL: ${imageUrl}`);
     // First, we need to fetch the image data
     const imageResponse = await fetch(imageUrl);
     if (!imageResponse.ok) {
@@ -176,6 +208,8 @@ async function analyzeImageWithStability(imageUrl: string) {
     
     // Get the image as a buffer
     const imageBuffer = await imageResponse.arrayBuffer();
+    
+    console.log(`Image fetched (size: ${imageBuffer.byteLength} bytes), sending to Stability AI...`);
     
     // Call Stability AI's API for image analysis
     const stabilityResponse = await fetch('https://api.stability.ai/v1/generation/stable-diffusion-xl-1.0/image-to-image', {
@@ -205,6 +239,7 @@ async function analyzeImageWithStability(imageUrl: string) {
     }
     
     const analysisData = await stabilityResponse.json();
+    console.log(`Image analysis complete, received response from Stability AI`);
     return analysisData;
   } catch (error) {
     console.error(`Error analyzing image ${imageUrl}:`, error);

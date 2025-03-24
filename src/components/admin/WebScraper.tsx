@@ -10,7 +10,8 @@ import { Progress } from '@/components/ui/progress';
 import { webScraperService } from '@/services/webScraperService';
 import { toast } from 'sonner';
 import { FurnitureItem } from '@/types/database';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface WebScraperProps {
   onItemsExtracted: (items: Partial<FurnitureItem>[]) => void;
@@ -40,6 +41,7 @@ const WebScraper: React.FC<WebScraperProps> = ({ onItemsExtracted }) => {
 
     try {
       // Start crawling
+      console.log('Starting web scraping for URL:', url);
       setProgress(30);
       const result = await webScraperService.crawlWebsite({ url });
       
@@ -59,6 +61,7 @@ const WebScraper: React.FC<WebScraperProps> = ({ onItemsExtracted }) => {
         description: item.description,
         category: item.category,
         image_url: item.imageUrl,
+        resource_type: 'image' as 'image' | 'pdf' | 'url',
       }));
       
       setExtractedItems(furnitureItems);
@@ -151,9 +154,13 @@ const WebScraper: React.FC<WebScraperProps> = ({ onItemsExtracted }) => {
               )}
               
               {error && (
-                <div className="text-sm text-red-500 p-2 bg-red-50 rounded border border-red-200">
-                  {error}
-                </div>
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>
+                    {error}
+                  </AlertDescription>
+                </Alert>
               )}
               
               <Button type="submit" disabled={isLoading || !url} className="w-full">
