@@ -3,7 +3,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 import { corsHeaders } from '../_shared/cors.ts'
 
 const FIRECRAWL_API_KEY = Deno.env.get('FIRECRAWL_API_KEY')
-const STABILITY_API_KEY = Deno.env.get('STABILITY_API_KEY')
 
 interface CrawlRequest {
   url: string;
@@ -51,6 +50,7 @@ Deno.serve(async (req) => {
     let crawlResponse;
     try {
       // Using the correct endpoint URL from Firecrawl docs
+      console.log('Calling Firecrawl API at: https://api.firecrawl.dev/api/crawl');
       crawlResponse = await fetch('https://api.firecrawl.dev/api/crawl', {
         method: 'POST',
         headers: {
@@ -67,6 +67,11 @@ Deno.serve(async (req) => {
       });
       
       console.log(`Firecrawl API response status: ${crawlResponse.status}`);
+      
+      if (!crawlResponse.ok) {
+        const errorText = await crawlResponse.text();
+        throw new Error(`Firecrawl API returned status ${crawlResponse.status}: ${errorText}`);
+      }
     } catch (fetchError) {
       console.error('Fetch error when calling Firecrawl API:', fetchError);
       return new Response(
@@ -93,6 +98,7 @@ Deno.serve(async (req) => {
     let crawlData;
     try {
       crawlData = await crawlResponse.json();
+      console.log('Successfully parsed Firecrawl API response as JSON');
     } catch (jsonError) {
       console.error('Error parsing Firecrawl API response as JSON:', jsonError);
       return new Response(
@@ -104,65 +110,17 @@ Deno.serve(async (req) => {
       )
     }
     
-    // Extract images for further analysis if Stability API key is available
-    if (STABILITY_API_KEY && crawlData?.pages?.length > 0) {
-      try {
-        // Process the first few images with Stability AI
-        const imagesToAnalyze = [];
-        let imageCount = 0;
-        
-        // Collect images from pages
-        for (const page of crawlData.pages) {
-          if (page.images && page.images.length > 0) {
-            for (const imageUrl of page.images) {
-              if (imageCount < 5 && isValidImageUrl(imageUrl)) { // Limit to 5 images
-                imagesToAnalyze.push({
-                  url: imageUrl,
-                  title: page.title || '',
-                  pageUrl: page.url
-                });
-                imageCount++;
-              }
-              
-              if (imageCount >= 5) break;
-            }
-          }
-          
-          if (imageCount >= 5) break;
-        }
-        
-        // If we have images to analyze, use Stability AI
-        if (imagesToAnalyze.length > 0) {
-          console.log(`Analyzing ${imagesToAnalyze.length} images with Stability AI`);
-          
-          const imageAnalysisResults = await Promise.allSettled(
-            imagesToAnalyze.map(async (image) => {
-              try {
-                return await analyzeImageWithStability(image.url);
-              } catch (err) {
-                console.error(`Error analyzing image ${image.url}:`, err);
-                throw err;
-              }
-            })
-          );
-          
-          // Add analysis results to crawl data
-          crawlData.imageAnalysis = imageAnalysisResults.map((result, index) => {
-            return {
-              imageUrl: imagesToAnalyze[index].url,
-              title: imagesToAnalyze[index].title,
-              pageUrl: imagesToAnalyze[index].pageUrl,
-              analysis: result.status === 'fulfilled' ? result.value : null,
-              error: result.status === 'rejected' ? String(result.reason) : null
-            };
-          });
-        }
-      } catch (analysisError) {
-        console.error('Error during image analysis:', analysisError);
-        // Continue with the crawl data even if image analysis fails
-      }
-    } else if (!STABILITY_API_KEY) {
-      console.log('Stability API key not provided - skipping image analysis');
+    // Process the crawled data to extract product information
+    if (crawlData?.pages?.length > 0) {
+      console.log(`Successfully crawled ${crawlData.pages.length} pages`);
+      
+      // Extract product details from crawled pages
+      const extractedProducts = extractProductDetails(crawlData.pages);
+      crawlData.extractedProducts = extractedProducts;
+      
+      console.log(`Extracted ${extractedProducts.length} products from crawled pages`);
+    } else {
+      console.log('No pages were crawled or returned by Firecrawl API');
     }
     
     return new Response(
@@ -178,8 +136,45 @@ Deno.serve(async (req) => {
   }
 });
 
+// Function to extract product details from crawled pages
+function extractProductDetails(pages) {
+  const products = [];
+  
+  for (const page of pages) {
+    // Skip pages without content or images
+    if (!page.content || !page.images || page.images.length === 0) continue;
+    
+    const title = page.title || getNameFromUrl(page.url);
+    const description = extractDescription(page.content);
+    const category = guessCategory(title, page.content);
+    
+    // Extract potential price information
+    const price = extractPrice(page.content);
+    
+    // Extract specifications or features
+    const specs = extractSpecifications(page.content);
+    
+    // Create a product entry for each image on the page
+    for (const imageUrl of page.images) {
+      if (isValidImageUrl(imageUrl)) {
+        products.push({
+          name: title,
+          description,
+          category,
+          imageUrl,
+          price,
+          specifications: specs,
+          pageUrl: page.url
+        });
+      }
+    }
+  }
+  
+  return products;
+}
+
 // Helper function to check if URL is a valid image
-function isValidImageUrl(url: string): boolean {
+function isValidImageUrl(url) {
   if (!url) return false;
   
   try {
@@ -195,57 +190,102 @@ function isValidImageUrl(url: string): boolean {
   }
 }
 
-// Function to analyze image with Stability AI
-async function analyzeImageWithStability(imageUrl: string) {
-  if (!STABILITY_API_KEY) {
-    throw new Error('Missing Stability API key');
-  }
-
+// Helper functions
+function getNameFromUrl(url) {
   try {
-    console.log(`Fetching image from URL: ${imageUrl}`);
-    // First, we need to fetch the image data
-    const imageResponse = await fetch(imageUrl);
-    if (!imageResponse.ok) {
-      throw new Error(`Failed to fetch image: ${imageResponse.status}`);
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split('/').filter(Boolean);
+    if (pathParts.length > 0) {
+      // Get last path segment and convert to title case
+      return pathParts[pathParts.length - 1]
+        .replace(/-|_/g, ' ')
+        .replace(/\b\w/g, l => l.toUpperCase());
     }
-    
-    // Get the image as a buffer
-    const imageBuffer = await imageResponse.arrayBuffer();
-    
-    console.log(`Image fetched (size: ${imageBuffer.byteLength} bytes), sending to Stability AI...`);
-    
-    // Call Stability AI's API for image analysis
-    const stabilityResponse = await fetch('https://api.stability.ai/v1/generation/stable-diffusion-xl-1.0/image-to-image', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${STABILITY_API_KEY}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        text_prompts: [
-          {
-            text: "Analyze this furniture item and describe it in detail",
-            weight: 1.0
-          }
-        ],
-        init_image: Buffer.from(imageBuffer).toString('base64'),
-        image_strength: 0.35,
-        cfg_scale: 7,
-        samples: 1,
-      })
-    });
-    
-    if (!stabilityResponse.ok) {
-      const errorData = await stabilityResponse.text();
-      throw new Error(`Stability API error: ${stabilityResponse.status} ${errorData}`);
-    }
-    
-    const analysisData = await stabilityResponse.json();
-    console.log(`Image analysis complete, received response from Stability AI`);
-    return analysisData;
-  } catch (error) {
-    console.error(`Error analyzing image ${imageUrl}:`, error);
-    throw error;
+    // Fallback to hostname
+    return urlObj.hostname.replace('www.', '');
+  } catch {
+    return 'Unnamed Item';
   }
+}
+
+function extractDescription(content) {
+  // Find first paragraph or reasonable block of text
+  if (!content) return '';
+  
+  // Get first 200 characters as description
+  const cleanText = content
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/\s+/g, ' ')    // Normalize whitespace
+    .trim();
+    
+  return cleanText.length > 200 
+    ? cleanText.substring(0, 197) + '...' 
+    : cleanText;
+}
+
+function guessCategory(name, content) {
+  const text = (name + ' ' + content).toLowerCase();
+  
+  // Simple category detection based on keywords
+  if (text.includes('sofa') || text.includes('couch') || text.includes('sectional')) {
+    return 'sofas';
+  } else if (text.includes('table') || text.includes('desk')) {
+    return 'tables';
+  } else if (text.includes('chair') || text.includes('stool')) {
+    return 'chairs';
+  } else if (text.includes('bed') || text.includes('mattress')) {
+    return 'beds';
+  } else if (text.includes('shelf') || text.includes('cabinet') || text.includes('drawer')) {
+    return 'storage';
+  } else if (text.includes('lamp') || text.includes('light')) {
+    return 'lighting';
+  } else if (text.includes('rug') || text.includes('pillow') || text.includes('decor')) {
+    return 'decor';
+  }
+  
+  return 'decor'; // Default category
+}
+
+function extractPrice(content) {
+  if (!content) return null;
+  
+  // Common price patterns in USD
+  const priceRegex = /\$\s?[\d,]+(\.\d{2})?|\$[\d,]+(\.\d{2})?/g;
+  const matches = content.match(priceRegex);
+  
+  if (matches && matches.length > 0) {
+    // Return the first match, cleaned up
+    return matches[0].replace(/[^\d.]/g, '');
+  }
+  
+  return null;
+}
+
+function extractSpecifications(content) {
+  if (!content) return [];
+  
+  const specs = [];
+  
+  // Look for common spec patterns like "Dimensions: 30 x 40 inches"
+  const dimensionsRegex = /dimensions:?\s*([^\.]+)/i;
+  const dimensionsMatch = content.match(dimensionsRegex);
+  if (dimensionsMatch && dimensionsMatch[1]) {
+    specs.push({ name: "Dimensions", value: dimensionsMatch[1].trim() });
+  }
+  
+  // Look for materials
+  const materialsRegex = /materials?:?\s*([^\.]+)/i;
+  const materialsMatch = content.match(materialsRegex);
+  if (materialsMatch && materialsMatch[1]) {
+    specs.push({ name: "Materials", value: materialsMatch[1].trim() });
+  }
+  
+  // Look for colors
+  const colorsRegex = /colou?rs?:?\s*([^\.]+)/i;
+  const colorsMatch = content.match(colorsRegex);
+  if (colorsMatch && colorsMatch[1]) {
+    specs.push({ name: "Colors", value: colorsMatch[1].trim() });
+  }
+  
+  return specs;
 }

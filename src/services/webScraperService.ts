@@ -12,6 +12,9 @@ interface ScrapedFurnitureItem {
   description: string;
   imageUrl: string;
   category: string;
+  price?: string;
+  specifications?: Array<{name: string, value: string}>;
+  pageUrl?: string;
 }
 
 interface ScrapedPage {
@@ -21,14 +24,6 @@ interface ScrapedPage {
   images: string[];
 }
 
-interface ImageAnalysis {
-  imageUrl: string;
-  title: string;
-  pageUrl: string;
-  analysis: any;
-  error: string | null;
-}
-
 interface CrawlResult {
   success: boolean;
   data: {
@@ -36,7 +31,7 @@ interface CrawlResult {
     completed: number;
     total: number;
     pages: ScrapedPage[];
-    imageAnalysis?: ImageAnalysis[];
+    extractedProducts?: ScrapedFurnitureItem[];
   };
   error?: string;
 }
@@ -108,37 +103,22 @@ export const webScraperService = {
   },
   
   extractFurnitureItems: (crawlResult: CrawlResult): ScrapedFurnitureItem[] => {
-    if (!crawlResult.success || !crawlResult.data || !crawlResult.data.pages) {
+    if (!crawlResult.success || !crawlResult.data) {
       return [];
     }
     
+    // Use pre-extracted products from the edge function if available
+    if (crawlResult.data.extractedProducts && crawlResult.data.extractedProducts.length > 0) {
+      console.log(`Using ${crawlResult.data.extractedProducts.length} pre-extracted products from edge function`);
+      return crawlResult.data.extractedProducts;
+    }
+    
+    // Fallback to manual extraction if needed
     const items: ScrapedFurnitureItem[] = [];
     console.log('Extracting furniture items from crawl result');
     
-    // First, try to use image analysis if available
-    if (crawlResult.data.imageAnalysis && crawlResult.data.imageAnalysis.length > 0) {
-      console.log('Using image analysis results');
-      crawlResult.data.imageAnalysis.forEach(analysis => {
-        if (analysis.imageUrl && !analysis.error) {
-          const name = analysis.title || getNameFromUrl(analysis.pageUrl);
-          const pageContent = findPageContentByUrl(crawlResult.data.pages, analysis.pageUrl);
-          
-          items.push({
-            name,
-            description: extractDescription(pageContent),
-            imageUrl: analysis.imageUrl,
-            category: guessCategory(name, pageContent)
-          });
-        } else if (analysis.error) {
-          console.warn('Skipping image with analysis error:', analysis.error);
-        }
-      });
-    }
-    
-    // If no items were found from analysis, fall back to the original extraction method
-    if (items.length === 0) {
-      console.log('No items from image analysis, falling back to basic extraction');
-      // Process each page from the crawl result
+    // Process each page from the crawl result
+    if (crawlResult.data.pages) {
       crawlResult.data.pages.forEach(page => {
         // Get images from the page
         const images = page.images || [];
@@ -166,12 +146,6 @@ export const webScraperService = {
     return items;
   }
 };
-
-// Helper function to find page content by URL
-function findPageContentByUrl(pages: ScrapedPage[], url: string): string {
-  const page = pages.find(p => p.url === url);
-  return page ? page.content : '';
-}
 
 // Helper functions
 function getNameFromUrl(url: string): string {
