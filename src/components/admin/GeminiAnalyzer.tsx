@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,11 +70,9 @@ const GeminiAnalyzer: React.FC<GeminiAnalyzerProps> = ({ onItemsExtracted }) => 
     }
 
     try {
-      // Attempt to extract product data from the structuredData or from the text
       const data = analysisResult.structuredData || {};
       const analysisText = analysisResult.analysis;
       
-      // Create a new furniture item from the analysis
       const furnitureItem: Partial<FurnitureItem> = {
         name: data.name || data.product_name || extractField(analysisText, ['name', 'product name', 'item name'], 'New Product'),
         category: data.category || extractField(analysisText, ['category', 'type', 'product type'], 'decor'),
@@ -93,7 +90,6 @@ const GeminiAnalyzer: React.FC<GeminiAnalyzerProps> = ({ onItemsExtracted }) => 
     }
   };
 
-  // Helper function to extract a field from analysis text
   const extractField = (text: string, possibleLabels: string[], defaultValue: string = ''): string => {
     for (const label of possibleLabels) {
       const regex = new RegExp(`${label}[\\s]*[:-]\\s*([^\\n]+)`, 'i');
@@ -194,7 +190,7 @@ const GeminiAnalyzer: React.FC<GeminiAnalyzerProps> = ({ onItemsExtracted }) => 
             <div className="space-y-2">
               <Label>Upload Product Image</Label>
               <ImageUpload
-                maxImages={1}
+                maxFiles={1}
                 onImagesSelected={() => {}}
                 onImageUrlsReady={handleImageUrlsReady}
               />
@@ -218,8 +214,7 @@ const GeminiAnalyzer: React.FC<GeminiAnalyzerProps> = ({ onItemsExtracted }) => 
             <div className="space-y-2">
               <Label>Upload PDF Document</Label>
               <ImageUpload
-                maxImages={1}
-                acceptedFileTypes={{ 'application/pdf': ['.pdf'] }}
+                maxFiles={1}
                 onImagesSelected={() => {}}
                 onImageUrlsReady={handlePdfUrlsReady}
               />
@@ -262,7 +257,7 @@ const GeminiAnalyzer: React.FC<GeminiAnalyzerProps> = ({ onItemsExtracted }) => 
             <div className="space-y-2">
               <Label>Upload Multiple Product Images to Compare</Label>
               <ImageUpload
-                maxImages={4}
+                maxFiles={4}
                 onImagesSelected={() => {}}
                 onImageUrlsReady={handleImageUrlsReady}
               />
