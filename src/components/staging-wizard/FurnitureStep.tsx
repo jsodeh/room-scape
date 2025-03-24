@@ -18,7 +18,7 @@ const FurnitureStep = ({ goToNextStep }: FurnitureStepProps) => {
       <div className="space-y-2">
         <h2 className="text-xl font-medium">Select Furniture</h2>
         <p className="text-sm text-muted-foreground">
-          Choose furniture items to include in your virtual staging. Select multiple items from different categories.
+          Choose furniture items to include in your virtual staging. Select multiple items from different categories or upload your own custom furniture.
         </p>
       </div>
       

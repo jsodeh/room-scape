@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Search, Filter, ChevronDown } from 'lucide-react';
+import { Search, Filter, ChevronDown, Upload } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getFurnitureItems } from '@/services/storageService';
 import { FurnitureItem } from '@/lib/supabase';
+import ImageUpload from '@/components/image-upload/ImageUpload';
+import CustomFurnitureUploader from './furniture/CustomFurnitureUploader';
 
 // Categories remain static but furniture items will be fetched from Supabase
 const FURNITURE_CATEGORIES = [
@@ -19,6 +21,7 @@ const FURNITURE_CATEGORIES = [
   { id: 'storage', name: 'Storage' },
   { id: 'decor', name: 'Decor' },
   { id: 'lighting', name: 'Lighting' },
+  { id: 'custom', name: 'My Uploads' },
 ];
 
 interface FurnitureSelectorProps {
@@ -30,13 +33,15 @@ const FurnitureSelector = ({ onFurnitureSelected }: FurnitureSelectorProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItems, setSelectedItems] = useState<FurnitureItem[]>([]);
   const [furnitureItems, setFurnitureItems] = useState<FurnitureItem[]>([]);
+  const [customItems, setCustomItems] = useState<FurnitureItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showUploader, setShowUploader] = useState(false);
 
   useEffect(() => {
     const loadFurnitureItems = async () => {
       setLoading(true);
       try {
-        const items = await getFurnitureItems(selectedCategory);
+        const items = await getFurnitureItems(selectedCategory !== 'custom' ? selectedCategory : 'all');
         setFurnitureItems(items);
       } catch (error) {
         console.error('Error loading furniture items:', error);
@@ -45,12 +50,16 @@ const FurnitureSelector = ({ onFurnitureSelected }: FurnitureSelectorProps) => {
       }
     };
 
-    loadFurnitureItems();
+    if (selectedCategory !== 'custom') {
+      loadFurnitureItems();
+    } else {
+      setLoading(false);
+    }
   }, [selectedCategory]);
 
-  const filteredItems = furnitureItems.filter(item => {
+  const filteredItems = (selectedCategory === 'custom' ? customItems : furnitureItems).filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         item.description.toLowerCase().includes(searchQuery.toLowerCase());
+                         (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesSearch;
   });
 
@@ -66,6 +75,28 @@ const FurnitureSelector = ({ onFurnitureSelected }: FurnitureSelectorProps) => {
       setSelectedItems(newSelectedItems);
       onFurnitureSelected(newSelectedItems);
     }
+  };
+
+  const handleCustomImageUploaded = (imageUrl: string) => {
+    // Create a custom furniture item
+    const newCustomItem: FurnitureItem = {
+      id: `custom-${Date.now()}`,
+      name: 'Custom Furniture',
+      category: 'custom',
+      description: 'Your uploaded furniture',
+      image_url: imageUrl,
+    };
+    
+    const updatedCustomItems = [...customItems, newCustomItem];
+    setCustomItems(updatedCustomItems);
+    
+    // Auto-select the newly uploaded item
+    const newSelectedItems = [...selectedItems, newCustomItem];
+    setSelectedItems(newSelectedItems);
+    onFurnitureSelected(newSelectedItems);
+    
+    // Close the uploader
+    setShowUploader(false);
   };
 
   return (
@@ -104,6 +135,31 @@ const FurnitureSelector = ({ onFurnitureSelected }: FurnitureSelectorProps) => {
         </ScrollArea>
       </div>
       
+      {selectedCategory === 'custom' && (
+        <div className="border-2 border-dashed rounded-lg p-4 text-center">
+          {showUploader ? (
+            <CustomFurnitureUploader 
+              onImageUploaded={handleCustomImageUploaded}
+              onCancel={() => setShowUploader(false)}
+            />
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mx-auto">
+                <Upload className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-lg font-medium">Upload Your Furniture</h3>
+              <p className="text-sm text-muted-foreground">
+                Add your own furniture images to include in staging
+                <span className="block text-xs mt-1 text-amber-600 font-medium">Premium Feature</span>
+              </p>
+              <Button onClick={() => setShowUploader(true)}>
+                Upload Custom Furniture
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+      
       {loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, index) => (
@@ -119,6 +175,7 @@ const FurnitureSelector = ({ onFurnitureSelected }: FurnitureSelectorProps) => {
           {filteredItems.length > 0 ? (
             filteredItems.map(item => {
               const isSelected = selectedItems.some(selectedItem => selectedItem.id === item.id);
+              const isCustom = item.id.toString().startsWith('custom-');
               
               return (
                 <div 
@@ -140,6 +197,13 @@ const FurnitureSelector = ({ onFurnitureSelected }: FurnitureSelectorProps) => {
                         <Badge>Selected</Badge>
                       </div>
                     )}
+                    {isCustom && (
+                      <div className="absolute top-2 left-2">
+                        <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200">
+                          Custom
+                        </Badge>
+                      </div>
+                    )}
                   </div>
                   <div className="p-3">
                     <h4 className="font-medium text-sm">{item.name}</h4>
@@ -150,7 +214,11 @@ const FurnitureSelector = ({ onFurnitureSelected }: FurnitureSelectorProps) => {
             })
           ) : (
             <div className="col-span-full py-12 text-center text-muted-foreground">
-              <p>No furniture items found. Try adjusting your search or filters.</p>
+              {selectedCategory === 'custom' ? (
+                <p>You haven't uploaded any custom furniture images yet.</p>
+              ) : (
+                <p>No furniture items found. Try adjusting your search or filters.</p>
+              )}
             </div>
           )}
         </div>
