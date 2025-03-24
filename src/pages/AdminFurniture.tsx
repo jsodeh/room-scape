@@ -6,7 +6,6 @@ import ResourceDialog from '@/components/admin/ResourceDialog';
 import ResourceHeader from '@/components/admin/ResourceHeader';
 import ResourceSearchAndFilter from '@/components/admin/ResourceSearchAndFilter';
 import ResourceContent from '@/components/admin/ResourceContent';
-import WebScraper from '@/components/admin/WebScraper';
 import GeminiAnalyzer from '@/components/admin/gemini/GeminiAnalyzer';
 import { useFurnitureItems } from '@/hooks/useFurnitureItems';
 import { useFurnitureItemManagement } from '@/hooks/useFurnitureItemManagement';
@@ -54,9 +53,8 @@ const AdminFurniture = () => {
         />
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-3 w-full max-w-md">
+          <TabsList className="grid grid-cols-2 w-full max-w-md">
             <TabsTrigger value="manual">Manual Management</TabsTrigger>
-            <TabsTrigger value="scraper">Web Scraper</TabsTrigger>
             <TabsTrigger value="gemini">Gemini AI</TabsTrigger>
           </TabsList>
           
@@ -79,10 +77,6 @@ const AdminFurniture = () => {
               onEdit={openEditDialog}
               onDelete={handleDelete}
             />
-          </TabsContent>
-          
-          <TabsContent value="scraper">
-            <WebScraper onItemsExtracted={handleItemsExtracted} />
           </TabsContent>
           
           <TabsContent value="gemini">
