@@ -73,8 +73,14 @@ export const parseProductJson = (jsonContent: string): ImportResult => {
       };
     });
     
-    // Filter out items without images
-    const validItems = furnitureItems.filter(item => item.image_url);
+    // Filter out items without images, names, or categories
+    const validItems = furnitureItems.filter(item => 
+      item.image_url && item.name && item.category
+    );
+    
+    if (validItems.length === 0) {
+      throw new Error('No valid items found. All items must have a name, category, and image URL.');
+    }
     
     return {
       success: true,
@@ -100,8 +106,12 @@ export const convertProductToFurnitureItem = (product: ImportedProduct): Partial
     : 0;
   const imageUrl = product.pictures?.[0] || '';
   
+  if (!product.name || !category || !imageUrl) {
+    throw new Error('Invalid product: missing required fields (name, category, or image)');
+  }
+  
   return {
-    name: product.name || 'Unnamed Product',
+    name: product.name,
     category,
     description: `Imported from ${product.product_link || 'external source'}. Price: ${product.price || 'N/A'}`,
     image_url: imageUrl,

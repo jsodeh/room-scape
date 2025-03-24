@@ -6,7 +6,7 @@ import { FurnitureItem } from '@/types/database';
 import { importFurnitureItems } from '@/services/furnitureService';
 
 // Define the initial state for a new furniture item
-export const initialItemState = {
+export const initialItemState: Partial<FurnitureItem> = {
   name: '',
   category: '',
   description: '',
@@ -83,18 +83,23 @@ export const useFurnitureItemManagement = (onItemsUpdate: () => void) => {
       toast.error('URL is required for web resources');
       return;
     }
+
+    // For image resources, ensure we have an image URL
+    if (currentItem.resource_type === 'image' && !currentItem.image_url) {
+      toast.error('Image URL is required for image resources');
+      return;
+    }
     
     try {
-      let itemData: Partial<FurnitureItem> = {
-        id: currentItem.id,
+      let itemData = {
         name: currentItem.name,
         category: currentItem.category,
         description: currentItem.description || '',
         image_url: currentItem.image_url || '',
         resource_type: currentItem.resource_type,
-        external_url: currentItem.external_url,
-        pdf_url: currentItem.pdf_url,
-        price: currentItem.price,
+        external_url: currentItem.external_url || null,
+        pdf_url: currentItem.pdf_url || null,
+        price: currentItem.price || null,
       };
       
       if (isEditMode && currentItem.id) {
@@ -106,10 +111,9 @@ export const useFurnitureItemManagement = (onItemsUpdate: () => void) => {
         if (error) throw error;
         toast.success('Furniture item updated successfully');
       } else {
-        const { id, ...newItemData } = itemData;
         const { error } = await supabase
           .from('furniture_items')
-          .insert(newItemData);
+          .insert(itemData);
         
         if (error) throw error;
         toast.success('Furniture item added successfully');

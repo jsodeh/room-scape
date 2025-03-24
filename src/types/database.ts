@@ -4,7 +4,7 @@ export interface FurnitureItem {
   id: string;
   name: string;
   category: string;
-  description: string;
+  description?: string;
   image_url: string;
   resource_type?: 'image' | 'pdf' | 'url'; // Type of resource
   external_url?: string; // External URL for web resources

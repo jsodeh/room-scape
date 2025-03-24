@@ -33,6 +33,14 @@ export const getFurnitureItems = async (category: string = 'all', resourceType: 
   }
 };
 
+// Validate a furniture item to ensure required fields are present
+const validateFurnitureItem = (item: Partial<FurnitureItem>): boolean => {
+  if (!item.name || !item.category || !item.image_url) {
+    return false;
+  }
+  return true;
+};
+
 // Add a function to import multiple furniture items at once
 export const importFurnitureItems = async (items: Partial<FurnitureItem>[]): Promise<boolean> => {
   try {
@@ -40,18 +48,31 @@ export const importFurnitureItems = async (items: Partial<FurnitureItem>[]): Pro
       throw new Error('No items to import');
     }
     
-    // Remove any id fields as we want Supabase to generate new ones
-    const itemsToInsert = items.map(({ id, ...item }) => item);
+    // Filter out invalid items and convert to the correct format
+    const validItems = items.filter(validateFurnitureItem).map(({ id, ...item }) => ({
+      name: item.name!,
+      category: item.category!,
+      image_url: item.image_url!,
+      description: item.description || '',
+      resource_type: item.resource_type || 'image',
+      external_url: item.external_url || null,
+      pdf_url: item.pdf_url || null,
+      price: item.price || null
+    }));
+    
+    if (validItems.length === 0) {
+      throw new Error('No valid items to import. Items must have name, category, and image_url.');
+    }
     
     const { error } = await supabase
       .from('furniture_items')
-      .insert(itemsToInsert);
+      .insert(validItems);
     
     if (error) {
       throw error;
     }
     
-    toast.success(`Successfully imported ${items.length} furniture items`);
+    toast.success(`Successfully imported ${validItems.length} furniture items`);
     return true;
   } catch (error: any) {
     toast.error(`Error importing furniture items: ${error.message}`);
