@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { webScraperService } from '@/services/webScraperService';
 import { toast } from 'sonner';
 import { FurnitureItem } from '@/types/database';
+import { Loader2 } from 'lucide-react';
 
 interface WebScraperProps {
   onItemsExtracted: (items: Partial<FurnitureItem>[]) => void;
@@ -22,6 +23,7 @@ const WebScraper: React.FC<WebScraperProps> = ({ onItemsExtracted }) => {
   const [extractedItems, setExtractedItems] = useState<Partial<FurnitureItem>[]>([]);
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [activeTab, setActiveTab] = useState('url');
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,35 +36,43 @@ const WebScraper: React.FC<WebScraperProps> = ({ onItemsExtracted }) => {
     setProgress(10);
     setExtractedItems([]);
     setSelectedItems(new Set());
+    setError(null);
 
     try {
+      // Start crawling
       setProgress(30);
       const result = await webScraperService.crawlWebsite({ url });
+      
+      // Check if the operation was successful
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to crawl website');
+      }
+      
       setProgress(70);
 
-      if (result.success) {
-        const items = webScraperService.extractFurnitureItems(result);
-        
-        // Convert to FurnitureItem format
-        const furnitureItems = items.map(item => ({
-          name: item.name,
-          description: item.description,
-          category: item.category,
-          image_url: item.imageUrl,
-        }));
-        
-        setExtractedItems(furnitureItems);
+      // Extract items from the crawl result
+      const items = webScraperService.extractFurnitureItems(result);
+      
+      // Convert to FurnitureItem format
+      const furnitureItems = items.map(item => ({
+        name: item.name,
+        description: item.description,
+        category: item.category,
+        image_url: item.imageUrl,
+      }));
+      
+      setExtractedItems(furnitureItems);
+      
+      if (furnitureItems.length > 0) {
         toast.success(`Found ${furnitureItems.length} potential furniture items`);
-        
-        if (furnitureItems.length > 0) {
-          setActiveTab('items');
-        }
+        setActiveTab('items');
       } else {
-        toast.error(result.error || 'Failed to extract data from website');
+        toast.warning('No furniture items found. Try a different URL or check if the website contains furniture images.');
       }
     } catch (error) {
       console.error('Error extracting data:', error);
-      toast.error('Failed to extract data from website');
+      setError(error.message || 'Failed to extract data from website');
+      toast.error(error.message || 'Failed to extract data from website');
     } finally {
       setIsLoading(false);
       setProgress(100);
@@ -125,16 +135,28 @@ const WebScraper: React.FC<WebScraperProps> = ({ onItemsExtracted }) => {
                   disabled={isLoading}
                   className="w-full"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Enter the URL of a furniture website to extract product information
+                </p>
               </div>
               
               {isLoading && (
                 <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground">Crawling website...</div>
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm text-muted-foreground">Crawling website...</span>
+                  </div>
                   <Progress value={progress} />
                 </div>
               )}
               
-              <Button type="submit" disabled={isLoading} className="w-full">
+              {error && (
+                <div className="text-sm text-red-500 p-2 bg-red-50 rounded border border-red-200">
+                  {error}
+                </div>
+              )}
+              
+              <Button type="submit" disabled={isLoading || !url} className="w-full">
                 {isLoading ? 'Extracting...' : 'Extract Furniture'}
               </Button>
             </form>
@@ -143,7 +165,7 @@ const WebScraper: React.FC<WebScraperProps> = ({ onItemsExtracted }) => {
         
         <TabsContent value="items">
           <CardContent>
-            <div className="space-y-2">
+            <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <Label>Found {extractedItems.length} items</Label>
                 <span className="text-sm text-muted-foreground">

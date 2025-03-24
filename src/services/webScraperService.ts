@@ -21,6 +21,14 @@ interface ScrapedPage {
   images: string[];
 }
 
+interface ImageAnalysis {
+  imageUrl: string;
+  title: string;
+  pageUrl: string;
+  analysis: any;
+  error: string | null;
+}
+
 interface CrawlResult {
   success: boolean;
   data: {
@@ -28,6 +36,7 @@ interface CrawlResult {
     completed: number;
     total: number;
     pages: ScrapedPage[];
+    imageAnalysis?: ImageAnalysis[];
   };
   error?: string;
 }
@@ -37,7 +46,7 @@ export const webScraperService = {
     try {
       const { url, limit = 100 } = options;
       
-      const { data, error } = await supabase.functions.invoke('web-scraper', {
+      const response = await supabase.functions.invoke('web-scraper', {
         body: {
           url,
           limit,
@@ -45,16 +54,26 @@ export const webScraperService = {
         }
       });
       
-      if (error) {
-        console.error('Error calling web-scraper function:', error);
-        toast.error('Failed to crawl website');
-        return { success: false, data: null, error: error.message };
+      if (response.error) {
+        console.error('Error calling web-scraper function:', response.error);
+        toast.error('Failed to crawl website: ' + response.error.message);
+        return { success: false, data: null, error: response.error.message };
       }
       
-      return { success: true, data };
+      // Check if the data structure is as expected
+      if (!response.data || !response.data.success) {
+        const errorMessage = response.data?.error || 'Unknown error occurred';
+        console.error('Web scraper returned error:', errorMessage);
+        toast.error('Failed to crawl website: ' + errorMessage);
+        return { success: false, data: null, error: errorMessage };
+      }
+      
+      // If we got here, the response was successful
+      console.log('Crawl result:', response.data);
+      return response.data;
     } catch (error) {
       console.error('Error in crawlWebsite:', error);
-      toast.error('Failed to crawl website');
+      toast.error('Failed to crawl website: ' + (error.message || 'Unknown error'));
       return { success: false, data: null, error: error.message };
     }
   },
@@ -66,30 +85,56 @@ export const webScraperService = {
     
     const items: ScrapedFurnitureItem[] = [];
     
-    // Process each page from the crawl result
-    crawlResult.data.pages.forEach(page => {
-      // Get images from the page
-      const images = page.images || [];
-      
-      if (images.length > 0) {
-        // Create a furniture item for each image found
-        images.forEach(imageUrl => {
-          // Extract name from page title or URL
-          const name = page.title || getNameFromUrl(page.url);
+    // First, try to use image analysis if available
+    if (crawlResult.data.imageAnalysis && crawlResult.data.imageAnalysis.length > 0) {
+      crawlResult.data.imageAnalysis.forEach(analysis => {
+        if (analysis.imageUrl && !analysis.error) {
+          const name = analysis.title || getNameFromUrl(analysis.pageUrl);
+          const pageContent = findPageContentByUrl(crawlResult.data.pages, analysis.pageUrl);
           
           items.push({
             name,
-            description: extractDescription(page.content),
-            imageUrl,
-            category: guessCategory(name, page.content)
+            description: extractDescription(pageContent),
+            imageUrl: analysis.imageUrl,
+            category: guessCategory(name, pageContent)
           });
-        });
-      }
-    });
+        }
+      });
+    }
+    
+    // If no items were found from analysis, fall back to the original extraction method
+    if (items.length === 0) {
+      // Process each page from the crawl result
+      crawlResult.data.pages.forEach(page => {
+        // Get images from the page
+        const images = page.images || [];
+        
+        if (images.length > 0) {
+          // Create a furniture item for each image found
+          images.forEach(imageUrl => {
+            // Extract name from page title or URL
+            const name = page.title || getNameFromUrl(page.url);
+            
+            items.push({
+              name,
+              description: extractDescription(page.content),
+              imageUrl,
+              category: guessCategory(name, page.content)
+            });
+          });
+        }
+      });
+    }
     
     return items;
   }
 };
+
+// Helper function to find page content by URL
+function findPageContentByUrl(pages: ScrapedPage[], url: string): string {
+  const page = pages.find(p => p.url === url);
+  return page ? page.content : '';
+}
 
 // Helper functions
 function getNameFromUrl(url: string): string {
