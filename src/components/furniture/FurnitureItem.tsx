@@ -8,7 +8,7 @@ interface FurnitureItemProps {
   onClick: () => void;
 }
 
-const FurnitureItem = ({ item, isSelected, onClick }: FurnitureItemProps) => {
+const FurnitureItemComponent = ({ item, isSelected, onClick }: FurnitureItemProps) => {
   const isCustom = item.id.toString().startsWith('custom-');
   
   return (
@@ -47,4 +47,4 @@ const FurnitureItem = ({ item, isSelected, onClick }: FurnitureItemProps) => {
   );
 };
 
-export default FurnitureItem;
+export default FurnitureItemComponent;

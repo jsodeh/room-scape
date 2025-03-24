@@ -1,13 +1,13 @@
 
 import { Skeleton } from '@/components/ui/skeleton';
-import { FurnitureItem } from '@/types/database';
-import FurnitureItem from './FurnitureItem';
+import { FurnitureItem as FurnitureItemType } from '@/types/database';
+import FurnitureItemComponent from './FurnitureItem';
 
 interface FurnitureGridProps {
-  items: FurnitureItem[];
-  selectedItems: FurnitureItem[];
+  items: FurnitureItemType[];
+  selectedItems: FurnitureItemType[];
   loading: boolean;
-  onItemClick: (item: FurnitureItem) => void;
+  onItemClick: (item: FurnitureItemType) => void;
   category: string;
 }
 
@@ -46,7 +46,7 @@ const FurnitureGrid = ({ items, selectedItems, loading, onItemClick, category }:
           className="animate-fade-in" 
           style={{ animationDelay: `${index * 50}ms` }}
         >
-          <FurnitureItem
+          <FurnitureItemComponent
             item={item}
             isSelected={selectedItems.some(selectedItem => selectedItem.id === item.id)}
             onClick={() => onItemClick(item)}

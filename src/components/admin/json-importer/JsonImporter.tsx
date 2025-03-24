@@ -20,7 +20,12 @@ const JsonImporter = ({ onItemsExtracted }: JsonImporterProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isBatchImporting, setIsBatchImporting] = useState(false);
   const [processedItems, setProcessedItems] = useState<Partial<FurnitureItem>[]>([]);
-  const [importStats, setImportStats] = useState<{ total: number; valid: number } | null>(null);
+  const [importStats, setImportStats] = useState<{ 
+    total: number; 
+    valid: number;
+    invalid?: number;
+    reasons?: Record<string, number> 
+  } | null>(null);
 
   const handleJsonContent = (content: string) => {
     setJsonContent(content);
@@ -41,8 +46,10 @@ const JsonImporter = ({ onItemsExtracted }: JsonImporterProps) => {
       const validItems = result.items;
       
       setImportStats({
-        total: result.items.length,
-        valid: validItems.length
+        total: result.stats?.total || validItems.length,
+        valid: validItems.length,
+        invalid: result.stats?.invalid,
+        reasons: result.stats?.reasons
       });
       
       setProcessedItems(validItems);

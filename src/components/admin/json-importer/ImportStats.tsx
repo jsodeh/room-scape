@@ -1,11 +1,17 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, Loader2 } from 'lucide-react';
+import { Download, Loader2, AlertCircle } from 'lucide-react';
 import { FurnitureItem } from '@/types/database';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface ImportStatsProps {
-  stats: { total: number; valid: number } | null;
+  stats: { 
+    total: number; 
+    valid: number;
+    invalid?: number;
+    reasons?: Record<string, number> 
+  } | null;
   processedItems: Partial<FurnitureItem>[];
   isBatchImporting: boolean;
   onBatchImport: () => void;
@@ -19,9 +25,44 @@ const ImportStats = ({
 }: ImportStatsProps) => {
   if (!stats) return null;
 
+  const hasValidationErrors = stats.invalid && stats.invalid > 0;
+  
+  // Format reason messages for better readability
+  const formatReason = (reason: string): string => {
+    const reasonMap: Record<string, string> = {
+      missing_name: 'Missing product name',
+      missing_image: 'Missing product image',
+      invalid_image_url: 'Invalid image URL',
+      missing_category: 'Missing product category'
+    };
+    
+    return reasonMap[reason] || reason;
+  };
+
   return (
-    <div className="text-sm space-y-2">
-      <p>Processed {stats.total} items, found {stats.valid} valid items with images.</p>
+    <div className="space-y-3">
+      <div className="text-sm">
+        <p>
+          Processed {stats.total} items, found {stats.valid} valid items 
+          {hasValidationErrors && ` (${stats.invalid} invalid)`}.
+        </p>
+      </div>
+      
+      {hasValidationErrors && stats.reasons && Object.keys(stats.reasons).length > 0 && (
+        <Alert variant="destructive" className="py-2">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="text-xs">
+            <p className="font-medium">Validation errors:</p>
+            <ul className="list-disc pl-5 mt-1 space-y-1">
+              {Object.entries(stats.reasons).map(([reason, count]) => (
+                <li key={reason}>
+                  {formatReason(reason)}: {count} item{count !== 1 ? 's' : ''}
+                </li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
       
       {processedItems.length > 0 && (
         <div className="flex justify-end">
