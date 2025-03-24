@@ -111,7 +111,7 @@ export const convertProductToFurnitureItem = (product: ImportedProduct): Partial
     
   // Create description or use existing
   const description = product.description || 
-    `Imported from ${product.product_link || 'external source'}. Price: ${product.price || 'N/A'}`;
+    `Imported from external source. Price: ${product.price || 'N/A'}`;
     
   return {
     name: product.name,
@@ -119,7 +119,7 @@ export const convertProductToFurnitureItem = (product: ImportedProduct): Partial
     description,
     image_url: imageUrl,
     resource_type: 'image' as const,
-    external_url: product.product_link || '',
+    // Removed external_url field as it doesn't exist in the database schema
     price: numericPrice
   };
 };

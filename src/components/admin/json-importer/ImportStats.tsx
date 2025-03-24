@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, Loader2, AlertCircle } from 'lucide-react';
+import { Download, Loader2, AlertCircle, Eye } from 'lucide-react';
 import { FurnitureItem } from '@/types/database';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -15,13 +15,15 @@ interface ImportStatsProps {
   processedItems: Partial<FurnitureItem>[];
   isBatchImporting: boolean;
   onBatchImport: () => void;
+  onViewItem?: (item: Partial<FurnitureItem>) => void;
 }
 
 const ImportStats = ({ 
   stats, 
   processedItems, 
   isBatchImporting, 
-  onBatchImport 
+  onBatchImport,
+  onViewItem
 }: ImportStatsProps) => {
   if (!stats) return null;
 
@@ -38,6 +40,9 @@ const ImportStats = ({
     
     return reasonMap[reason] || reason;
   };
+
+  // Get the first valid item for quick view, if available
+  const hasViewableItems = processedItems.length > 0 && onViewItem;
 
   return (
     <div className="space-y-3">
@@ -65,7 +70,17 @@ const ImportStats = ({
       )}
       
       {processedItems.length > 0 && (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          {hasViewableItems && (
+            <Button 
+              onClick={() => onViewItem(processedItems[0])}
+              variant="outline" 
+              className="gap-2"
+            >
+              <Eye className="h-4 w-4" />
+              View First Item
+            </Button>
+          )}
           <Button 
             onClick={onBatchImport}
             disabled={isBatchImporting}

@@ -54,10 +54,8 @@ const JsonImporter = ({ onItemsExtracted }: JsonImporterProps) => {
       
       setProcessedItems(validItems);
       
-      // If there's at least one valid item, pass the first one to the dialog
-      if (validItems.length > 0) {
-        onItemsExtracted([validItems[0]]);
-      }
+      // Remove the automatic extraction of the first item to avoid modal popup
+      // Only extract items when explicitly requested
       
       toast.success(`Successfully processed ${validItems.length} items from JSON`);
     } catch (error: any) {
@@ -103,6 +101,11 @@ const JsonImporter = ({ onItemsExtracted }: JsonImporterProps) => {
     setProcessedItems([]);
   };
 
+  // Add a function to handle viewing a single item
+  const handleViewItem = (item: Partial<FurnitureItem>) => {
+    onItemsExtracted([item]);
+  };
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -129,6 +132,7 @@ const JsonImporter = ({ onItemsExtracted }: JsonImporterProps) => {
           processedItems={processedItems}
           isBatchImporting={isBatchImporting}
           onBatchImport={handleBatchImport}
+          onViewItem={handleViewItem}
         />
       </CardContent>
       <CardFooter className="flex justify-between">

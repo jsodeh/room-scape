@@ -7,7 +7,7 @@ import ResourceHeader from '@/components/admin/ResourceHeader';
 import ResourceSearchAndFilter from '@/components/admin/ResourceSearchAndFilter';
 import ResourceContent from '@/components/admin/ResourceContent';
 import GeminiAnalyzer from '@/components/admin/gemini/GeminiAnalyzer';
-import JsonImporter from '@/components/admin/json-importer';
+import JsonImporter from '@/components/admin/json-importer/JsonImporter';
 import { useFurnitureItems } from '@/hooks/useFurnitureItems';
 import { useFurnitureItemManagement } from '@/hooks/useFurnitureItemManagement';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -37,7 +37,7 @@ const AdminFurniture = () => {
   } = useFurnitureItemManagement(fetchFurnitureItems);
 
   const handleItemsExtracted = (items: Partial<FurnitureItem>[]) => {
-    // If items are found, open dialog with the first one
+    // Only open dialog if items are found and explicitly requested
     if (items.length > 0) {
       setCurrentItem(items[0]);
       openAddDialog();
