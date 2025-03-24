@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
@@ -53,12 +52,8 @@ serve(async (req) => {
     const prompt = createPrompt(instructions, furnitureUrls, referenceImageUrl);
     console.log("Final prompt:", prompt);
 
-    // Prepare and send request to Stability API
-    const formData = await prepareStabilityRequest(roomImageData, prompt, referenceImageUrl);
-    const stabilityResult = await sendStabilityRequest(formData);
-
-    // Process and save the generated images
-    const stagedImages = await processAndSaveImages(stabilityResult, projectId);
+    // Process and generate the staged room using Stability AI v2beta API
+    const stagedImages = await generateStagedRoomV2(roomImageData, prompt, referenceImageUrl, projectId);
 
     // Update the project with generated images
     const updatedProject = await updateProjectWithResults(projectId, stagedImages);
@@ -161,92 +156,97 @@ function createPrompt(instructions, furnitureUrls, referenceImageUrl) {
   return prompt;
 }
 
-// Prepare the request to Stability AI
-async function prepareStabilityRequest(roomImageData, prompt, referenceImageUrl) {
-  const formData = new FormData();
-  formData.append("init_image", new Blob([roomImageData], { type: "image/jpeg" }));
-  formData.append("text_prompts[0][text]", prompt);
-  formData.append("text_prompts[0][weight]", "1");
-  formData.append("cfg_scale", "7");
-  formData.append("clip_guidance_preset", "FAST_BLUE");
-  formData.append("samples", "1");
-  formData.append("steps", "30");
+// Generate staged room using Stability AI v2beta API
+async function generateStagedRoomV2(roomImageData, prompt, referenceImageUrl, projectId) {
+  console.log("Using Stability AI v2beta API to generate staged room");
   
-  // If we have a reference image, add it as a style reference
-  if (referenceImageUrl) {
-    try {
-      const refImageData = await fetchImage(referenceImageUrl, "reference");
-      
-      // Add the reference image to the request
-      formData.append("style_preset", "photographic");
-      formData.append("style_reference_image", new Blob([refImageData], { type: "image/jpeg" }));
-    } catch (refError) {
-      console.error("Error processing reference image, continuing without it:", refError);
-    }
-  }
-  
-  return formData;
-}
-
-// Send request to Stability API
-async function sendStabilityRequest(formData) {
-  // Log API request details for debugging
-  console.log("Sending request to Stability API with endpoint: image-to-image");
-  console.log("API key configured:", !!stabilityApiKey);
-  console.log("Request parameters:", {
-    samples: 1,
-    steps: 30,
-    cfg_scale: 7,
-    clip_guidance_preset: "FAST_BLUE",
-    has_init_image: true,
-    has_style_reference: formData.has("style_reference_image")
-  });
-
-  const stabilityResponse = await fetch(
-    "https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/image-to-image",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${stabilityApiKey}`,
-        Accept: "application/json",
-      },
-      body: formData,
-    }
-  );
-
-  if (!stabilityResponse.ok) {
-    const errorText = await stabilityResponse.text();
-    console.error("Stability API error response status:", stabilityResponse.status);
-    console.error("Stability API error response body:", errorText);
+  try {
+    // Convert image data to base64
+    const base64Image = arrayBufferToBase64(roomImageData);
     
-    const errorMessage = `Stability API error: ${stabilityResponse.status} - ${errorText}`;
-    throw new Error(errorMessage);
+    // Prepare request body for the v2beta search-and-replace endpoint
+    const requestBody = {
+      image: base64Image,
+      prompt: prompt,
+      seed: Math.floor(Math.random() * 2147483647),  // Random seed value
+      cfg_scale: 7,
+      samples: 1
+    };
+    
+    // Reference image if provided
+    if (referenceImageUrl) {
+      try {
+        const refImageData = await fetchImage(referenceImageUrl, "reference");
+        requestBody.reference_image = arrayBufferToBase64(refImageData);
+      } catch (refError) {
+        console.error("Error processing reference image, continuing without it:", refError);
+      }
+    }
+    
+    console.log("Sending request to Stability AI v2beta API");
+    console.log("Using endpoint: search-and-replace");
+    
+    // Make request to Stability AI v2beta API
+    const response = await fetch(
+      "https://api.stability.ai/v2beta/stable-image/edit/search-and-replace",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${stabilityApiKey}`,
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify(requestBody)
+      }
+    );
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Stability API error response:", response.status);
+      console.error("Error details:", errorText);
+      throw new Error(`Stability API error: ${response.status} - ${errorText}`);
+    }
+    
+    const result = await response.json();
+    console.log("Received successful response from Stability API");
+    
+    if (!result.artifacts || result.artifacts.length === 0) {
+      throw new Error("No images returned from Stability API");
+    }
+    
+    // Process and upload images to Supabase storage
+    const imageUrls = await processAndSaveResultImages(result.artifacts, projectId);
+    return imageUrls;
+  } catch (error) {
+    console.error("Error generating staged room:", error);
+    await updateProjectStatus(projectId, "failed", error.message);
+    throw error;
   }
-
-  const stabilityResult = await stabilityResponse.json();
-  console.log("Stability API response received successfully");
-  console.log("Number of artifacts received:", stabilityResult.artifacts?.length || 0);
-
-  if (!stabilityResult.artifacts || stabilityResult.artifacts.length === 0) {
-    const errorMsg = "Stability API returned no images";
-    console.error(errorMsg);
-    throw new Error(errorMsg);
-  }
-  
-  return stabilityResult;
 }
 
-// Process and save generated images
-async function processAndSaveImages(stabilityResult, projectId) {
+// Convert ArrayBuffer to base64
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+// Process and save generated images from the v2beta API
+async function processAndSaveResultImages(artifacts, projectId) {
   const stagedImages = [];
   
-  for (const image of stabilityResult.artifacts) {
-    // Convert base64 to Buffer
-    const imageData = Uint8Array.from(atob(image.base64), c => c.charCodeAt(0));
+  for (let i = 0; i < artifacts.length; i++) {
+    const artifact = artifacts[i];
+    
+    // Decode base64 image
+    const imageData = Uint8Array.from(atob(artifact.image), c => c.charCodeAt(0));
     
     // Generate a unique filename
     const timestamp = new Date().getTime();
-    const fileName = `staged-${projectId}-${timestamp}.png`;
+    const fileName = `staged-${projectId}-${timestamp}-${i}.png`;
     const filePath = `staged-images/${fileName}`;
     
     console.log(`Uploading image to Supabase Storage: ${filePath}`);
