@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 import { corsHeaders } from '../_shared/cors.ts'
 
@@ -46,11 +47,11 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Make the request to Firecrawl API - FIXED URL
+    // Make the request to Firecrawl API with corrected URL according to documentation
     let crawlResponse;
     try {
-      // Updated endpoint URL to the correct endpoint from Firecrawl docs
-      crawlResponse = await fetch('https://api.firecrawl.dev/crawl', {
+      // Using the correct endpoint URL from Firecrawl docs
+      crawlResponse = await fetch('https://api.firecrawl.dev/api/crawl', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -64,6 +65,8 @@ Deno.serve(async (req) => {
           }
         })
       });
+      
+      console.log(`Firecrawl API response status: ${crawlResponse.status}`);
     } catch (fetchError) {
       console.error('Fetch error when calling Firecrawl API:', fetchError);
       return new Response(
