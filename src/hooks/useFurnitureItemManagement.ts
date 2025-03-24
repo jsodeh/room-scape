@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { FurnitureItem } from '@/types/database';
+import { importFurnitureItems } from '@/services/furnitureService';
 
 // Define the initial state for a new furniture item
 export const initialItemState = {
@@ -13,12 +14,14 @@ export const initialItemState = {
   resource_type: 'image' as 'image' | 'pdf' | 'url',
   external_url: '',
   pdf_url: '',
+  price: 0,
 };
 
 export const useFurnitureItemManagement = (onItemsUpdate: () => void) => {
   const [currentItem, setCurrentItem] = useState<Partial<FurnitureItem>>(initialItemState);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isBatchProcessing, setIsBatchProcessing] = useState(false);
 
   const openAddDialog = () => {
     setCurrentItem(initialItemState);
@@ -82,8 +85,8 @@ export const useFurnitureItemManagement = (onItemsUpdate: () => void) => {
     }
     
     try {
-      let itemData: FurnitureItem = {
-        id: currentItem.id || '',
+      let itemData: Partial<FurnitureItem> = {
+        id: currentItem.id,
         name: currentItem.name,
         category: currentItem.category,
         description: currentItem.description || '',
@@ -91,6 +94,7 @@ export const useFurnitureItemManagement = (onItemsUpdate: () => void) => {
         resource_type: currentItem.resource_type,
         external_url: currentItem.external_url,
         pdf_url: currentItem.pdf_url,
+        price: currentItem.price,
       };
       
       if (isEditMode && currentItem.id) {
@@ -116,6 +120,29 @@ export const useFurnitureItemManagement = (onItemsUpdate: () => void) => {
     } catch (error: any) {
       toast.error(`Failed to save furniture item: ${error.message}`);
       console.error(error);
+    }
+  };
+
+  const handleBatchImport = async (items: Partial<FurnitureItem>[]) => {
+    if (!items || items.length === 0) {
+      toast.error('No valid items to import');
+      return;
+    }
+    
+    setIsBatchProcessing(true);
+    
+    try {
+      const success = await importFurnitureItems(items);
+      
+      if (success) {
+        onItemsUpdate();
+        toast.success(`Successfully imported ${items.length} items`);
+      }
+    } catch (error: any) {
+      toast.error(`Failed to import items: ${error.message}`);
+      console.error(error);
+    } finally {
+      setIsBatchProcessing(false);
     }
   };
 
@@ -145,10 +172,12 @@ export const useFurnitureItemManagement = (onItemsUpdate: () => void) => {
     setCurrentItem,
     isDialogOpen,
     isEditMode,
+    isBatchProcessing,
     openAddDialog,
     openEditDialog,
     closeDialog,
     handleSubmit,
-    handleDelete
+    handleDelete,
+    handleBatchImport
   };
 };

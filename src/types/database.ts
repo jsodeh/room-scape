@@ -9,6 +9,7 @@ export interface FurnitureItem {
   resource_type?: 'image' | 'pdf' | 'url'; // Type of resource
   external_url?: string; // External URL for web resources
   pdf_url?: string; // URL for PDF resources
+  price?: number; // Price of the furniture item
   created_at?: string;
 }
 
