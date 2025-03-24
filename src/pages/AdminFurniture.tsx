@@ -6,13 +6,17 @@ import ResourceDialog from '@/components/admin/ResourceDialog';
 import ResourceHeader from '@/components/admin/ResourceHeader';
 import ResourceSearchAndFilter from '@/components/admin/ResourceSearchAndFilter';
 import ResourceContent from '@/components/admin/ResourceContent';
+import WebScraper from '@/components/admin/WebScraper';
 import { useFurnitureItems } from '@/hooks/useFurnitureItems';
 import { useFurnitureItemManagement } from '@/hooks/useFurnitureItemManagement';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FurnitureItem } from '@/types/database';
 
 const AdminFurniture = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [resourceTypeFilter, setResourceTypeFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState('manual');
   
   const { furniture, isLoading, fetchFurnitureItems } = useFurnitureItems(
     categoryFilter, 
@@ -31,6 +35,14 @@ const AdminFurniture = () => {
     handleDelete
   } = useFurnitureItemManagement(fetchFurnitureItems);
 
+  const handleItemsExtracted = (items: Partial<FurnitureItem>[]) => {
+    // If items are found, open dialog with the first one
+    if (items.length > 0) {
+      setCurrentItem(items[0]);
+      openAddDialog();
+    }
+  };
+
   return (
     <AdminLayout title="Furniture Management">
       <div className="space-y-6">
@@ -40,24 +52,37 @@ const AdminFurniture = () => {
           onAddNew={openAddDialog}
         />
         
-        <ImageGuidelinesInfo />
-        
-        <ResourceSearchAndFilter 
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          categoryFilter={categoryFilter}
-          setCategoryFilter={setCategoryFilter}
-          resourceTypeFilter={resourceTypeFilter}
-          setResourceTypeFilter={setResourceTypeFilter}
-        />
-        
-        <ResourceContent 
-          furniture={furniture}
-          isLoading={isLoading}
-          searchQuery={searchQuery}
-          onEdit={openEditDialog}
-          onDelete={handleDelete}
-        />
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid grid-cols-2 w-full max-w-md">
+            <TabsTrigger value="manual">Manual Management</TabsTrigger>
+            <TabsTrigger value="scraper">Web Scraper</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="manual" className="space-y-6">
+            <ImageGuidelinesInfo />
+            
+            <ResourceSearchAndFilter 
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              categoryFilter={categoryFilter}
+              setCategoryFilter={setCategoryFilter}
+              resourceTypeFilter={resourceTypeFilter}
+              setResourceTypeFilter={setResourceTypeFilter}
+            />
+            
+            <ResourceContent 
+              furniture={furniture}
+              isLoading={isLoading}
+              searchQuery={searchQuery}
+              onEdit={openEditDialog}
+              onDelete={handleDelete}
+            />
+          </TabsContent>
+          
+          <TabsContent value="scraper">
+            <WebScraper onItemsExtracted={handleItemsExtracted} />
+          </TabsContent>
+        </Tabs>
       </div>
       
       <ResourceDialog 
