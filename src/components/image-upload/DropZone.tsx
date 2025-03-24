@@ -1,11 +1,10 @@
 
-import { useRef } from 'react';
 import { UploadCloud } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface DropZoneProps {
   onFileSelect: (files: FileList) => void;
-  fileInputRef: React.RefObject<HTMLInputElement>; // Accept ref from parent
+  fileInputRef: React.RefObject<HTMLInputElement>;
 }
 
 const DropZone = ({ onFileSelect, fileInputRef }: DropZoneProps) => {
@@ -27,10 +26,17 @@ const DropZone = ({ onFileSelect, fileInputRef }: DropZoneProps) => {
     }
   };
 
+  const handleClick = () => {
+    // Directly trigger the file input click here, nowhere else
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   return (
     <div
       className="border-2 border-dashed rounded-xl p-8 text-center hover:bg-gray-50 transition-colors cursor-pointer group"
-      onClick={() => fileInputRef.current?.click()}
+      onClick={handleClick}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
@@ -40,16 +46,16 @@ const DropZone = ({ onFileSelect, fileInputRef }: DropZoneProps) => {
         </div>
         <h3 className="text-lg font-medium">Drag photos here</h3>
         <p className="text-sm text-muted-foreground mb-4">Support for JPG, PNG files</p>
+        <input
+          type="file"
+          multiple
+          accept="image/*"
+          className="hidden" // Hide the input entirely
+          onChange={handleFileChange}
+          ref={fileInputRef}
+        />
         <Button className="relative" type="button">
           Choose photos
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            onChange={handleFileChange}
-            ref={fileInputRef} // Use the ref from parent component
-          />
         </Button>
       </div>
     </div>
@@ -57,4 +63,3 @@ const DropZone = ({ onFileSelect, fileInputRef }: DropZoneProps) => {
 };
 
 export default DropZone;
-

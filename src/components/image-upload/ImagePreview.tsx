@@ -47,7 +47,10 @@ const ImagePreview = ({ previews, onRemove, onAddMore }: ImagePreviewProps) => {
         
         <div
           className="aspect-square rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors"
-          onClick={onAddMore}
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddMore();
+          }}
         >
           <div className="flex flex-col items-center justify-center p-4">
             <Image className="h-8 w-8 text-gray-400 mb-2" />

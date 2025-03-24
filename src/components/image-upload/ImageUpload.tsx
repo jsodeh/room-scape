@@ -28,11 +28,18 @@ const ImageUpload = ({ onImagesSelected, onImageUrlsReady, maxFiles = 10 }: Imag
     maxFiles
   });
 
+  const handleAddMore = () => {
+    // Ensure we only trigger the file input click once
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <DropZone 
         onFileSelect={handleFileSelect} 
-        fileInputRef={fileInputRef} // Pass the ref to DropZone
+        fileInputRef={fileInputRef}
       />
 
       {previews.length > 0 && (
@@ -45,7 +52,7 @@ const ImageUpload = ({ onImagesSelected, onImageUrlsReady, maxFiles = 10 }: Imag
           <ImagePreview 
             previews={previews} 
             onRemove={removeFile} 
-            onAddMore={() => fileInputRef.current?.click()} 
+            onAddMore={handleAddMore} 
           />
 
           {onImageUrlsReady && (
@@ -62,4 +69,3 @@ const ImageUpload = ({ onImagesSelected, onImageUrlsReady, maxFiles = 10 }: Imag
 };
 
 export default ImageUpload;
-
