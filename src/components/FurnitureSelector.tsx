@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Search, Filter, ChevronDown, Upload } from 'lucide-react';
+import { Search, Filter, ChevronDown, Upload, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -112,6 +112,17 @@ const FurnitureSelector = ({ onFurnitureSelected }: FurnitureSelectorProps) => {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+          <Button 
+            onClick={() => setShowUploader(true)}
+            className="gap-1 bg-primary hover:bg-primary/90"
+          >
+            <Upload className="h-4 w-4" />
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Upload</span>
+            <Badge variant="outline" className="ml-1 bg-amber-50 text-amber-600 border-amber-200 hidden sm:inline-flex">
+              Premium
+            </Badge>
+          </Button>
           <Button variant="outline" className="gap-2">
             <Filter className="h-4 w-4" />
             Filter
@@ -135,28 +146,30 @@ const FurnitureSelector = ({ onFurnitureSelected }: FurnitureSelectorProps) => {
         </ScrollArea>
       </div>
       
-      {selectedCategory === 'custom' && (
+      {showUploader && (
+        <div className="border-2 border-dashed rounded-lg p-4">
+          <CustomFurnitureUploader 
+            onImageUploaded={handleCustomImageUploaded}
+            onCancel={() => setShowUploader(false)}
+          />
+        </div>
+      )}
+      
+      {selectedCategory === 'custom' && !showUploader && (
         <div className="border-2 border-dashed rounded-lg p-4 text-center">
-          {showUploader ? (
-            <CustomFurnitureUploader 
-              onImageUploaded={handleCustomImageUploaded}
-              onCancel={() => setShowUploader(false)}
-            />
-          ) : (
-            <div className="space-y-4">
-              <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mx-auto">
-                <Upload className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="text-lg font-medium">Upload Your Furniture</h3>
-              <p className="text-sm text-muted-foreground">
-                Add your own furniture images to include in staging
-                <span className="block text-xs mt-1 text-amber-600 font-medium">Premium Feature</span>
-              </p>
-              <Button onClick={() => setShowUploader(true)}>
-                Upload Custom Furniture
-              </Button>
+          <div className="space-y-4">
+            <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mx-auto">
+              <Upload className="h-6 w-6 text-primary" />
             </div>
-          )}
+            <h3 className="text-lg font-medium">Upload Your Furniture</h3>
+            <p className="text-sm text-muted-foreground">
+              Add your own furniture images to include in staging
+              <span className="block text-xs mt-1 text-amber-600 font-medium">Premium Feature</span>
+            </p>
+            <Button onClick={() => setShowUploader(true)}>
+              Upload Custom Furniture
+            </Button>
+          </div>
         </div>
       )}
       
