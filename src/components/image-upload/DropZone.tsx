@@ -5,11 +5,10 @@ import { Button } from '@/components/ui/button';
 
 interface DropZoneProps {
   onFileSelect: (files: FileList) => void;
+  fileInputRef: React.RefObject<HTMLInputElement>; // Accept ref from parent
 }
 
-const DropZone = ({ onFileSelect }: DropZoneProps) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
+const DropZone = ({ onFileSelect, fileInputRef }: DropZoneProps) => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       onFileSelect(e.target.files);
@@ -49,7 +48,7 @@ const DropZone = ({ onFileSelect }: DropZoneProps) => {
             accept="image/*"
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             onChange={handleFileChange}
-            ref={fileInputRef}
+            ref={fileInputRef} // Use the ref from parent component
           />
         </Button>
       </div>
@@ -58,3 +57,4 @@ const DropZone = ({ onFileSelect }: DropZoneProps) => {
 };
 
 export default DropZone;
+

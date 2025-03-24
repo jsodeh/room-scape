@@ -30,7 +30,10 @@ const ImageUpload = ({ onImagesSelected, onImageUrlsReady, maxFiles = 10 }: Imag
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <DropZone onFileSelect={handleFileSelect} />
+      <DropZone 
+        onFileSelect={handleFileSelect} 
+        fileInputRef={fileInputRef} // Pass the ref to DropZone
+      />
 
       {previews.length > 0 && (
         <>
@@ -59,3 +62,4 @@ const ImageUpload = ({ onImagesSelected, onImageUrlsReady, maxFiles = 10 }: Imag
 };
 
 export default ImageUpload;
+
