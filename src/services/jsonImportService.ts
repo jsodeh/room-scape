@@ -117,10 +117,7 @@ export const convertProductToFurnitureItem = (product: ImportedProduct): Partial
     name: product.name,
     category,
     description,
-    image_url: imageUrl,
-    resource_type: 'image' as const,
-    // Removed external_url field as it doesn't exist in the database schema
-    price: numericPrice
+    image_url: imageUrl
   };
 };
 

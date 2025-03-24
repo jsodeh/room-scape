@@ -56,11 +56,12 @@ export const importFurnitureItems = async (items: Partial<FurnitureItem>[]): Pro
         name: item.name!,
         category: item.category!,
         image_url: item.image_url!,
-        description: item.description || '',
-        resource_type: item.resource_type || 'image',
-        external_url: item.external_url || null,
-        pdf_url: item.pdf_url || null,
-        price: item.price || null
+        description: item.description || ''
+        // Removed fields that don't exist in the database schema:
+        // - resource_type
+        // - external_url
+        // - pdf_url
+        // - price
       }));
     
     if (validItems.length === 0) {
