@@ -1,24 +1,17 @@
-
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { FurnitureItem } from '@/types/database';
-import ImageUpload from '@/components/ImageUpload';
-import { UploadCloud, FileText, Images, RefreshCw } from 'lucide-react';
-
-interface AnalysisResult {
-  success: boolean;
-  analysis: string;
-  structuredData?: any;
-  error?: string;
-}
+import { UploadCloud, FileText, Images } from 'lucide-react';
+import ImageAnalysisTab from './ImageAnalysisTab';
+import PdfAnalysisTab from './PdfAnalysisTab';
+import CompareProductsTab from './CompareProductsTab';
+import AnalysisResults from './AnalysisResults';
+import AnalysisProgress from './AnalysisProgress';
+import { AnalysisResult } from './types';
 
 interface GeminiAnalyzerProps {
   onItemsExtracted: (items: Partial<FurnitureItem>[]) => void;
@@ -28,7 +21,6 @@ const GeminiAnalyzer: React.FC<GeminiAnalyzerProps> = ({ onItemsExtracted }) => 
   const [activeTab, setActiveTab] = useState<'image' | 'pdf' | 'compare'>('image');
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [pdfUrl, setPdfUrl] = useState('');
-  const [externalPdfUrl, setExternalPdfUrl] = useState('');
   const [customPrompt, setCustomPrompt] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -44,19 +36,6 @@ const GeminiAnalyzer: React.FC<GeminiAnalyzerProps> = ({ onItemsExtracted }) => 
       setPdfUrl(urls[0]);
       toast.success('PDF ready for analysis');
     }
-  };
-
-  const handleExternalPdfUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setExternalPdfUrl(e.target.value);
-  };
-
-  const handleUsePdfUrl = () => {
-    if (!externalPdfUrl) {
-      toast.error('Please enter a valid PDF URL');
-      return;
-    }
-    setPdfUrl(externalPdfUrl);
-    toast.success('External PDF URL set for analysis');
   };
 
   const resetAnalysis = () => {
@@ -187,147 +166,42 @@ const GeminiAnalyzer: React.FC<GeminiAnalyzerProps> = ({ onItemsExtracted }) => 
         </TabsList>
         
         <TabsContent value="image">
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Upload Product Image</Label>
-              <ImageUpload
-                maxFiles={1}
-                acceptedFileTypes="image/*"
-                onImagesSelected={() => {}}
-                onImageUrlsReady={handleImageUrlsReady}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="customPrompt">Custom Instructions (Optional)</Label>
-              <Textarea
-                id="customPrompt"
-                placeholder="Add specific instructions for the AI analysis..."
-                value={customPrompt}
-                onChange={(e) => setCustomPrompt(e.target.value)}
-                className="resize-none h-20"
-              />
-            </div>
-          </CardContent>
+          <ImageAnalysisTab
+            customPrompt={customPrompt}
+            setCustomPrompt={setCustomPrompt}
+            onImageUrlsReady={handleImageUrlsReady}
+          />
         </TabsContent>
         
         <TabsContent value="pdf">
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Upload PDF Document</Label>
-              <ImageUpload
-                maxFiles={1}
-                acceptedFileTypes="application/pdf"
-                onImagesSelected={() => {}}
-                onImageUrlsReady={handlePdfUrlsReady}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="externalPdfUrl">Or Enter PDF URL</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="externalPdfUrl"
-                  placeholder="https://example.com/document.pdf"
-                  value={externalPdfUrl}
-                  onChange={handleExternalPdfUrlChange}
-                />
-                <Button 
-                  variant="outline" 
-                  onClick={handleUsePdfUrl}
-                  type="button"
-                >
-                  Use URL
-                </Button>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="pdfPrompt">Custom Instructions (Optional)</Label>
-              <Textarea
-                id="pdfPrompt"
-                placeholder="Add specific instructions for the AI analysis..."
-                value={customPrompt}
-                onChange={(e) => setCustomPrompt(e.target.value)}
-                className="resize-none h-20"
-              />
-            </div>
-          </CardContent>
+          <PdfAnalysisTab
+            pdfUrl={pdfUrl}
+            customPrompt={customPrompt}
+            setCustomPrompt={setCustomPrompt}
+            onPdfUrlsReady={handlePdfUrlsReady}
+          />
         </TabsContent>
         
         <TabsContent value="compare">
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Upload Multiple Product Images to Compare</Label>
-              <ImageUpload
-                maxFiles={4}
-                acceptedFileTypes="image/*"
-                onImagesSelected={() => {}}
-                onImageUrlsReady={handleImageUrlsReady}
-              />
-              <p className="text-xs text-muted-foreground">Upload 2-4 images to compare products</p>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="comparePrompt">Custom Instructions (Optional)</Label>
-              <Textarea
-                id="comparePrompt"
-                placeholder="Add specific instructions for the comparison..."
-                value={customPrompt}
-                onChange={(e) => setCustomPrompt(e.target.value)}
-                className="resize-none h-20"
-              />
-            </div>
-          </CardContent>
+          <CompareProductsTab
+            customPrompt={customPrompt}
+            setCustomPrompt={setCustomPrompt}
+            onImageUrlsReady={handleImageUrlsReady}
+          />
         </TabsContent>
         
         {isAnalyzing && (
           <CardContent>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Analyzing with Gemini AI...</span>
-                <span className="text-sm text-muted-foreground">{progress}%</span>
-              </div>
-              <Progress value={progress} />
-            </div>
+            <AnalysisProgress progress={progress} />
           </CardContent>
         )}
         
         {analysisResult && (
-          <CardContent className="border-t pt-4 mt-4">
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium">Analysis Results</h3>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={resetAnalysis}
-                  className="flex items-center gap-1"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  <span>Reset</span>
-                </Button>
-              </div>
-              
-              {analysisResult.success ? (
-                <>
-                  <div className="border rounded-md p-4 bg-muted/50 whitespace-pre-wrap max-h-72 overflow-y-auto">
-                    {analysisResult.analysis}
-                  </div>
-                  
-                  {activeTab === 'image' && (
-                    <Button onClick={extractFurnitureItem}>
-                      Extract as Furniture Item
-                    </Button>
-                  )}
-                </>
-              ) : (
-                <div className="border rounded-md p-4 bg-destructive/10 text-destructive">
-                  Error: {analysisResult.error || 'Unknown error occurred'}
-                </div>
-              )}
-            </div>
-          </CardContent>
+          <AnalysisResults
+            analysisResult={analysisResult}
+            resetAnalysis={resetAnalysis}
+            extractFurnitureItem={activeTab === 'image' ? extractFurnitureItem : undefined}
+          />
         )}
         
         <CardFooter className="pt-4">

@@ -7,7 +7,7 @@ import ResourceHeader from '@/components/admin/ResourceHeader';
 import ResourceSearchAndFilter from '@/components/admin/ResourceSearchAndFilter';
 import ResourceContent from '@/components/admin/ResourceContent';
 import WebScraper from '@/components/admin/WebScraper';
-import GeminiAnalyzer from '@/components/admin/GeminiAnalyzer';
+import GeminiAnalyzer from '@/components/admin/gemini/GeminiAnalyzer';
 import { useFurnitureItems } from '@/hooks/useFurnitureItems';
 import { useFurnitureItemManagement } from '@/hooks/useFurnitureItemManagement';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
