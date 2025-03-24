@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 import { corsHeaders } from '../_shared/cors.ts'
 
@@ -47,10 +46,11 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Make the request to Firecrawl API
+    // Make the request to Firecrawl API - FIXED URL
     let crawlResponse;
     try {
-      crawlResponse = await fetch('https://api.firecrawl.dev/api/v1/crawl', {
+      // Updated endpoint URL to the correct endpoint from Firecrawl docs
+      crawlResponse = await fetch('https://api.firecrawl.dev/crawl', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
