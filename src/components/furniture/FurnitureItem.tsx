@@ -1,6 +1,6 @@
 
 import { Badge } from '@/components/ui/badge';
-import { FurnitureItem as FurnitureItemType } from '@/lib/supabase';
+import { FurnitureItem as FurnitureItemType } from '@/types/database';
 
 interface FurnitureItemProps {
   item: FurnitureItemType;

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { getFurnitureItems } from '@/services/furnitureService';
 import { FurnitureItem } from '@/types/database';
@@ -75,6 +76,7 @@ const FurnitureSelector = ({ onFurnitureSelected }: FurnitureSelectorProps) => {
   };
 
   const handleCustomImageUploaded = (imageUrl: string) => {
+    // Create a new custom item that matches the FurnitureItem type from types/database.ts
     const newCustomItem: FurnitureItem = {
       id: `custom-${Date.now()}`,
       name: 'Custom Furniture',
@@ -85,9 +87,13 @@ const FurnitureSelector = ({ onFurnitureSelected }: FurnitureSelectorProps) => {
       created_at: new Date().toISOString()
     };
     
-    setCustomItems([...customItems, newCustomItem]);
-    setSelectedItems([...selectedItems, newCustomItem]);
-    onFurnitureSelected([...selectedItems, newCustomItem]);
+    const newItems = [...customItems, newCustomItem];
+    setCustomItems(newItems);
+    
+    const newSelected = [...selectedItems, newCustomItem];
+    setSelectedItems(newSelected);
+    
+    onFurnitureSelected(newSelected);
     setShowUploader(false);
   };
 

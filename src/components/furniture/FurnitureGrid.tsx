@@ -1,13 +1,13 @@
 
 import { Skeleton } from '@/components/ui/skeleton';
-import { FurnitureItem as FurnitureItemType } from '@/lib/supabase';
+import { FurnitureItem } from '@/types/database';
 import FurnitureItem from './FurnitureItem';
 
 interface FurnitureGridProps {
-  items: FurnitureItemType[];
-  selectedItems: FurnitureItemType[];
+  items: FurnitureItem[];
+  selectedItems: FurnitureItem[];
   loading: boolean;
-  onItemClick: (item: FurnitureItemType) => void;
+  onItemClick: (item: FurnitureItem) => void;
   category: string;
 }
 
