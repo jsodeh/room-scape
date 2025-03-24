@@ -15,13 +15,17 @@ const FurnitureCategoryBar = ({
 }: FurnitureCategoryBarProps) => {
   return (
     <ScrollArea className="whitespace-nowrap pb-2">
-      <div className="flex gap-2">
-        {categories.map(category => (
+      <div className="flex gap-2 animate-fade-in">
+        {categories.map((category, index) => (
           <Button
             key={category.id}
             variant={selectedCategory === category.id ? "default" : "outline"}
-            className="rounded-full"
+            className="rounded-full transition-all duration-300 transform"
             onClick={() => onCategoryChange(category.id)}
+            style={{ 
+              animationDelay: `${index * 50}ms`,
+              transform: selectedCategory === category.id ? 'scale(1.05)' : 'scale(1)'
+            }}
           >
             {category.name}
           </Button>

@@ -14,7 +14,7 @@ interface FurnitureGridProps {
 const FurnitureGrid = ({ items, selectedItems, loading, onItemClick, category }: FurnitureGridProps) => {
   if (loading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 animate-pulse">
         {Array.from({ length: 8 }).map((_, index) => (
           <div key={index} className="space-y-2">
             <Skeleton className="aspect-square w-full rounded-lg" />
@@ -28,7 +28,7 @@ const FurnitureGrid = ({ items, selectedItems, loading, onItemClick, category }:
 
   if (items.length === 0) {
     return (
-      <div className="col-span-full py-12 text-center text-muted-foreground">
+      <div className="col-span-full py-12 text-center text-muted-foreground animate-fade-in">
         {category === 'custom' ? (
           <p>You haven't uploaded any custom furniture images yet.</p>
         ) : (
@@ -40,13 +40,18 @@ const FurnitureGrid = ({ items, selectedItems, loading, onItemClick, category }:
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-      {items.map(item => (
-        <FurnitureItem
-          key={item.id}
-          item={item}
-          isSelected={selectedItems.some(selectedItem => selectedItem.id === item.id)}
-          onClick={() => onItemClick(item)}
-        />
+      {items.map((item, index) => (
+        <div 
+          key={item.id} 
+          className="animate-fade-in" 
+          style={{ animationDelay: `${index * 50}ms` }}
+        >
+          <FurnitureItem
+            item={item}
+            isSelected={selectedItems.some(selectedItem => selectedItem.id === item.id)}
+            onClick={() => onItemClick(item)}
+          />
+        </div>
       ))}
     </div>
   );
