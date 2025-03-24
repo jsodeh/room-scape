@@ -7,7 +7,7 @@ import ResourceHeader from '@/components/admin/ResourceHeader';
 import ResourceSearchAndFilter from '@/components/admin/ResourceSearchAndFilter';
 import ResourceContent from '@/components/admin/ResourceContent';
 import GeminiAnalyzer from '@/components/admin/gemini/GeminiAnalyzer';
-import JsonImporter from '@/components/admin/JsonImporter';
+import JsonImporter from '@/components/admin/json-importer';
 import { useFurnitureItems } from '@/hooks/useFurnitureItems';
 import { useFurnitureItemManagement } from '@/hooks/useFurnitureItemManagement';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';

@@ -39,7 +39,7 @@ const FurnitureSelector = ({ onFurnitureSelected }: FurnitureSelectorProps) => {
       setLoading(true);
       try {
         const items = await getFurnitureItems(selectedCategory !== 'custom' ? selectedCategory : 'all');
-        setFurnitureItems(items as FurnitureItem[]);
+        setFurnitureItems(items);
       } catch (error) {
         console.error('Error loading furniture items:', error);
       } finally {
@@ -81,15 +81,13 @@ const FurnitureSelector = ({ onFurnitureSelected }: FurnitureSelectorProps) => {
       category: 'custom',
       description: 'Your uploaded furniture',
       image_url: imageUrl,
+      resource_type: 'image',
+      created_at: new Date().toISOString()
     };
     
-    const updatedCustomItems = [...customItems, newCustomItem];
-    setCustomItems(updatedCustomItems);
-    
-    const newSelectedItems = [...selectedItems, newCustomItem];
-    setSelectedItems(newSelectedItems);
-    onFurnitureSelected(newSelectedItems);
-    
+    setCustomItems([...customItems, newCustomItem]);
+    setSelectedItems([...selectedItems, newCustomItem]);
+    onFurnitureSelected([...selectedItems, newCustomItem]);
     setShowUploader(false);
   };
 

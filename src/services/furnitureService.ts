@@ -16,7 +16,8 @@ export const getFurnitureItems = async (category: string = 'all', resourceType: 
     
     // Apply resource type filter if not 'all'
     if (resourceType !== 'all') {
-      query = query.eq('resource_type', resourceType);
+      // Use simple string filter to avoid deep type instantiation
+      query = query.filter('resource_type', 'eq', resourceType);
     }
     
     const { data, error } = await query.order('created_at', { ascending: false });
