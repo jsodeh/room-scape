@@ -25,10 +25,18 @@ export const useJsonImporter = (onItemsExtracted?: (items: Partial<FurnitureItem
     setProcessedItems([]);
   };
 
-  const processJson = () => {
+  const processJson = async () => {
     try {
       setIsProcessing(true);
       
+      // Add sample data to help debug if JSON is empty
+      if (!jsonContent.trim()) {
+        toast.error('Please enter JSON content first');
+        setIsProcessing(false);
+        return;
+      }
+      
+      console.log("Processing JSON content:", jsonContent.substring(0, 100) + "...");
       const result = parseProductJson(jsonContent);
       
       if (!result.success) {
@@ -36,6 +44,7 @@ export const useJsonImporter = (onItemsExtracted?: (items: Partial<FurnitureItem
       }
       
       const validItems = result.items;
+      console.log("Valid items after processing:", validItems);
       
       setImportStats({
         total: result.stats?.total || validItems.length,

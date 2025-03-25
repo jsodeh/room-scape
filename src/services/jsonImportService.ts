@@ -9,6 +9,11 @@ interface ImportedProduct {
   product_link?: string;
   sub_categories?: string[];
   description?: string;
+  // Add support for different JSON structures
+  image?: string;
+  image_url?: string;
+  images?: string[];
+  category?: string;
 }
 
 interface ImportResult {
@@ -29,11 +34,13 @@ interface ImportResult {
 const detectJsonStructure = (parsedData: any): ImportedProduct[] => {
   let products: ImportedProduct[] = [];
   
+  console.log("Attempting to detect JSON structure", parsedData);
+  
   if (Array.isArray(parsedData) && parsedData.length > 0) {
     if (parsedData[0].products && Array.isArray(parsedData[0].products)) {
       // Format: [{ products: [...] }]
       products = parsedData[0].products;
-    } else if (parsedData[0].name || parsedData[0].pictures) {
+    } else if (parsedData[0].name || parsedData[0].pictures || parsedData[0].image || parsedData[0].image_url) {
       // Format: direct array of products
       products = parsedData;
     }
@@ -48,6 +55,9 @@ const detectJsonStructure = (parsedData: any): ImportedProduct[] => {
     products = parsedData.items;
   }
   
+  // Additional logging to debug product detection
+  console.log(`Detected ${products.length} products in structure`);
+  
   return products;
 };
 
@@ -58,25 +68,46 @@ const validateProduct = (product: ImportedProduct): {
   valid: boolean;
   reason?: string;
 } => {
-  // Check for required fields
+  // Check for required fields - name
   if (!product.name || typeof product.name !== 'string' || product.name.trim() === '') {
     return { valid: false, reason: 'missing_name' };
   }
   
-  // Check for image
-  if (!product.pictures || !Array.isArray(product.pictures) || product.pictures.length === 0) {
+  // Determine image URL from various possible fields
+  const hasImage = !!(
+    (product.pictures && Array.isArray(product.pictures) && product.pictures.length > 0) ||
+    (product.images && Array.isArray(product.images) && product.images.length > 0) ||
+    product.image_url || 
+    product.image
+  );
+  
+  if (!hasImage) {
     return { valid: false, reason: 'missing_image' };
   }
   
+  // Get the first valid image URL
+  let imageUrl = '';
+  if (product.pictures && product.pictures.length > 0) {
+    imageUrl = product.pictures[0];
+  } else if (product.images && product.images.length > 0) {
+    imageUrl = product.images[0];
+  } else if (product.image_url) {
+    imageUrl = product.image_url;
+  } else if (product.image) {
+    imageUrl = product.image;
+  }
+  
   // Validate image URL
-  const imageUrl = product.pictures[0];
   if (typeof imageUrl !== 'string' || !imageUrl.match(/^https?:\/\/.+/i)) {
     return { valid: false, reason: 'invalid_image_url' };
   }
   
-  // Check for category
-  const hasCategory = (product.categories && product.categories.length > 0) || 
-                     (product.sub_categories && product.sub_categories.length > 0);
+  // Check for category from various possible fields
+  const hasCategory = !!(
+    (product.categories && product.categories.length > 0) || 
+    (product.sub_categories && product.sub_categories.length > 0) ||
+    product.category
+  );
   
   if (!hasCategory) {
     return { valid: false, reason: 'missing_category' };
@@ -89,12 +120,15 @@ const validateProduct = (product: ImportedProduct): {
  * Convert a single product to a furniture item
  */
 export const convertProductToFurnitureItem = (product: ImportedProduct): Partial<FurnitureItem> => {
-  // Extract the first category or use a default
-  const category = product.categories && product.categories.length > 0 
-    ? product.categories[0] 
-    : (product.sub_categories && product.sub_categories.length > 0 
-        ? product.sub_categories[0] 
-        : 'Other');
+  // Extract the category from various possible fields
+  let category = 'Other';
+  if (product.category) {
+    category = product.category;
+  } else if (product.categories && product.categories.length > 0) {
+    category = product.categories[0];
+  } else if (product.sub_categories && product.sub_categories.length > 0) {
+    category = product.sub_categories[0];
+  }
         
   // Extract numeric price from string (e.g., "$1,390.00" to 1390) or use as is if already a number
   let numericPrice = 0;
@@ -104,10 +138,17 @@ export const convertProductToFurnitureItem = (product: ImportedProduct): Partial
     numericPrice = product.price;
   }
     
-  // Use the first image as the main image
-  const imageUrl = product.pictures && product.pictures.length > 0 
-    ? product.pictures[0]
-    : '';
+  // Determine image URL from various possible fields
+  let imageUrl = '';
+  if (product.pictures && product.pictures.length > 0) {
+    imageUrl = product.pictures[0];
+  } else if (product.images && product.images.length > 0) {
+    imageUrl = product.images[0];
+  } else if (product.image_url) {
+    imageUrl = product.image_url;
+  } else if (product.image) {
+    imageUrl = product.image;
+  }
     
   // Create description or use existing
   const description = product.description || 
@@ -168,6 +209,7 @@ export const parseProductJson = (jsonContent: string): ImportResult => {
     };
     
     console.log(`Validated ${validItems.length} out of ${products.length} items`);
+    console.log("Validation reasons:", reasons);
     
     if (validItems.length === 0) {
       return {
