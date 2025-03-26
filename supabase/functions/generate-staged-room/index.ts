@@ -50,7 +50,7 @@ serve(async (req) => {
     const roomImageData = await fetchImage(roomImageUrl, "room");
 
     // Create prompt based on inputs
-    const prompt = createPrompt(instructions, furnitureUrls, referenceImageUrl);
+    let prompt = createPrompt(instructions, furnitureUrls, referenceImageUrl);
     console.log("Final prompt:", prompt);
 
     // Process and generate the staged room using Stability AI v2beta API

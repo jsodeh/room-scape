@@ -46,6 +46,11 @@ export function createPrompt(
       }
       prompt = prompt.slice(0, -1); // Remove trailing comma
     }
+  } else {
+    // When no furniture is explicitly selected, enhance the prompt to use appropriate furniture
+    if (!instructions || !instructions.includes("furniture")) {
+      prompt += ". Select appropriate furniture that fits the room's style and dimensions.";
+    }
   }
 
   if (referenceImageUrl) {

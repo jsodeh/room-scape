@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { 
@@ -121,9 +122,9 @@ export function useStagingProcessor({
     setLastError(null);
     setPollingCount(0);
     
-    // Allow empty furniture selection but provide a warning
+    // If no furniture is selected, just inform the user that AI will choose appropriate furniture
     if (selectedFurniture.length === 0) {
-      toast.warning('No furniture selected. We will stage the room based on your instructions only.');
+      toast.info('No furniture selected. Our AI will choose appropriate furniture for your room.');
     }
 
     // If no instructions are provided, create a default prompt

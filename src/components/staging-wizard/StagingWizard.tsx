@@ -26,13 +26,11 @@ const StagingWizard = ({ onSubmit }: StagingWizardProps) => {
       case 'upload':
         return uploadedImages.length > 0 && originalImageUrls.length > 0;
       case 'furniture':
-        // Furniture selection is now optional, but we still want to 
-        // show the completion indicator if they've selected something
-        return selectedFurniture.length > 0;
+        // Furniture selection is optional
+        return true;
       case 'instructions':
-        // Instructions are now optional, but we still want to
-        // show the completion indicator if they've entered something
-        return stagingInstructions.trim().length > 0;
+        // Instructions are optional
+        return true;
       default:
         return false;
     }
@@ -42,7 +40,13 @@ const StagingWizard = ({ onSubmit }: StagingWizardProps) => {
     if (activeTab === 'upload' && isStepComplete('upload')) {
       setActiveTab('furniture');
     } else if (activeTab === 'furniture') {
-      // Allow going to instructions even if no furniture is selected
+      // Allow going to instructions regardless of furniture selection
+      setActiveTab('instructions');
+    }
+  };
+
+  const goToInstructionsDirectly = () => {
+    if (isStepComplete('upload')) {
       setActiveTab('instructions');
     }
   };
@@ -73,7 +77,7 @@ const StagingWizard = ({ onSubmit }: StagingWizardProps) => {
             <span className="hidden sm:inline">Select Furniture</span>
             <span className="sm:hidden">Furniture</span>
           </span>
-          {isStepComplete('furniture') && (
+          {selectedFurniture.length > 0 && (
             <span className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full" />
           )}
         </TabsTrigger>
@@ -87,7 +91,7 @@ const StagingWizard = ({ onSubmit }: StagingWizardProps) => {
             <span className="hidden sm:inline">Add Instructions</span>
             <span className="sm:hidden">Instructions</span>
           </span>
-          {isStepComplete('instructions') && (
+          {stagingInstructions.trim().length > 0 && (
             <span className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full" />
           )}
         </TabsTrigger>
@@ -99,7 +103,10 @@ const StagingWizard = ({ onSubmit }: StagingWizardProps) => {
         </TabsContent>
         
         <TabsContent value="furniture" className="mt-0">
-          <FurnitureStep goToNextStep={goToNextStep} />
+          <FurnitureStep 
+            goToNextStep={goToNextStep} 
+            skipToInstructions={goToInstructionsDirectly} 
+          />
         </TabsContent>
         
         <TabsContent value="instructions" className="mt-0">

@@ -41,6 +41,7 @@ export async function generateStagedRoomV2(
     
     console.log("Sending request to Stability AI v2beta API");
     console.log("Using endpoint: search-and-replace");
+    console.log("Prompt being sent:", prompt);
     
     // Make request to Stability AI v2beta API
     const response = await fetch(
