@@ -26,7 +26,7 @@ export class StabilityApiClient {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${this.apiKey}`,
-            // Make sure Accept header is set correctly for this endpoint
+            // Accept header set per Stability API docs
             "Accept": "application/json"
           },
           body: formData,

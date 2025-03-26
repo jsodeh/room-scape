@@ -26,14 +26,15 @@ export async function prepareStabilityRequest(
   const roomImageBlob = new Blob([new Uint8Array(roomImageData)], { type: 'image/jpeg' });
   formData.append('image', roomImageBlob, 'room_image.jpg');
   
-  // According to Stability AI documentation, we need both prompt and search_prompt
-  formData.append('prompt', prompt);  // The desired result
-  formData.append('search_prompt', "room, interior");  // What to look for in the image - be more specific
+  // According to Stability AI documentation for search-and-replace endpoint
+  // We need to add the prompt and search_prompt parameters
+  formData.append('prompt', prompt);  // What we want to replace with
+  formData.append('search_prompt', "room, interior");  // What to look for in the image
   
-  // Add standard parameters
+  // Add standard parameters per Stability AI docs
   formData.append('seed', Math.floor(Math.random() * 2147483647).toString());
-  formData.append('cfg_scale', '7');
-  formData.append('samples', '1');
+  formData.append('cfg_scale', '7');  // Guidance scale - how strictly to follow the prompt
+  formData.append('samples', '1');    // Number of images to generate
   
   // More verbose debug info
   console.log("Request parameters:");
@@ -43,7 +44,7 @@ export async function prepareStabilityRequest(
   console.log(`- CFG Scale: ${formData.get('cfg_scale')}`);
   console.log(`- Samples: ${formData.get('samples')}`);
   
-  // Reference image if provided
+  // Reference image if provided - only include if under size limit
   if (referenceImageUrl) {
     try {
       const refImageData = await fetchImage(referenceImageUrl, "reference");
