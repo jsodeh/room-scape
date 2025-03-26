@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { getStagingProject } from '@/services/stagingService';
+import { useErrorReporting } from './useErrorReporting';
 
 interface UseProjectPollingProps {
   projectId: string | null;
@@ -17,7 +18,7 @@ export function useProjectPolling({
 }: UseProjectPollingProps) {
   const [pollingInterval, setPollingInterval] = useState<number | null>(null);
   const [pollingCount, setPollingCount] = useState(0);
-  const [lastError, setLastError] = useState<string | null>(null);
+  const { reportError, clearError } = useErrorReporting();
 
   // Clean up polling interval on unmount
   useEffect(() => {
@@ -41,7 +42,7 @@ export function useProjectPolling({
           if (pollingCount > MAX_POLLING_COUNT) {
             onProcessingChange(false);
             clearInterval(interval);
-            toast.error('Staging timed out. Please try again with a smaller image or different instructions.');
+            reportError('polling', 'Staging timed out. Please try again with a smaller image or different instructions.');
             console.error('Staging timed out after maximum polling attempts');
             return;
           }
@@ -60,19 +61,19 @@ export function useProjectPolling({
                 clearInterval(interval);
                 toast.success('Staging complete! Check out your results.');
                 console.log('Staging completed successfully');
+                clearError();  // Clear any errors on success
               } else {
                 onProcessingChange(false);
                 clearInterval(interval);
-                toast.error('No images were generated. Please try again with different settings.');
+                reportError('polling', 'No images were generated. Please try again with different settings.');
                 console.error('Project marked as completed but no images were returned');
               }
             } else if (project.status === 'failed') {
               onProcessingChange(false);
               clearInterval(interval);
               const errorMessage = project.error_message || 'Staging failed. Please try again.';
-              toast.error(errorMessage);
+              reportError('polling', errorMessage);
               console.error('Project failed with message:', errorMessage);
-              setLastError(errorMessage);
             } else {
               // Still processing, keep polling
               console.log(`Project status: ${project.status}`);
@@ -82,6 +83,7 @@ export function useProjectPolling({
           }
         } catch (error) {
           console.error('Error polling project status:', error);
+          reportError('polling', 'Error checking project status', error);
         }
       }, 5000); // Poll every 5 seconds
       
@@ -91,7 +93,7 @@ export function useProjectPolling({
         if (interval) clearInterval(interval);
       };
     }
-  }, [projectId, onProcessingChange, onComplete, onCompleteChange, pollingCount]);
+  }, [projectId, onProcessingChange, onComplete, onCompleteChange, pollingCount, reportError, clearError]);
 
-  return { lastError, resetPolling: () => setPollingCount(0) };
+  return { resetPolling: () => setPollingCount(0) };
 }

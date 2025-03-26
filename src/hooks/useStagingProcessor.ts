@@ -1,9 +1,9 @@
 
-import { useState } from 'react';
 import { FurnitureItem } from '@/types/database';
 import { useProjectPolling } from './useProjectPolling';
 import { useStagingSubmission } from './useStagingSubmission';
 import { useStagingRegeneration } from './useStagingRegeneration';
+import { useErrorReporting } from './useErrorReporting';
 
 interface StagingProcessorProps {
   userId?: string;
@@ -30,8 +30,11 @@ export function useStagingProcessor({
   setIsProcessing,
   setIsComplete
 }: StagingProcessorProps) {
+  // Set up error reporting
+  const { errors, hasErrors, getFirstError } = useErrorReporting();
+
   // Set up polling for project status updates
-  const { lastError: pollingError, resetPolling } = useProjectPolling({
+  const { resetPolling } = useProjectPolling({
     projectId: currentProjectId,
     onComplete: setStagedImageResults,
     onProcessingChange: setIsProcessing,
@@ -39,10 +42,7 @@ export function useStagingProcessor({
   });
 
   // Set up submission functionality
-  const { 
-    handleSubmit, 
-    lastError: submissionError 
-  } = useStagingSubmission({
+  const { handleSubmit } = useStagingSubmission({
     userId,
     originalImageUrls,
     selectedFurniture,
@@ -53,10 +53,7 @@ export function useStagingProcessor({
   });
 
   // Set up regeneration functionality
-  const { 
-    handleRegenerate, 
-    lastError: regenerationError 
-  } = useStagingRegeneration({
+  const { handleRegenerate } = useStagingRegeneration({
     userId,
     currentProjectId,
     originalImageUrls,
@@ -67,12 +64,11 @@ export function useStagingProcessor({
     setIsComplete
   });
 
-  // Combine errors from all sources
-  const lastError = pollingError || submissionError || regenerationError;
-
   return {
     handleSubmit,
     handleRegenerate,
-    lastError
+    errors,
+    hasErrors,
+    getFirstError
   };
 }

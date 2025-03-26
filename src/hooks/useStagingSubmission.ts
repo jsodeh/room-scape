@@ -6,6 +6,7 @@ import {
   generateStagedImages 
 } from '@/services/stagingService';
 import { FurnitureItem } from '@/types/database';
+import { useErrorReporting } from './useErrorReporting';
 
 interface UseStagingSubmissionProps {
   userId?: string;
@@ -26,7 +27,7 @@ export function useStagingSubmission({
   setCurrentProjectId,
   setIsProcessing
 }: UseStagingSubmissionProps) {
-  const [lastError, setLastError] = useState<string | null>(null);
+  const { reportError, clearError } = useErrorReporting();
 
   const createFinalInstructions = () => {
     let finalInstructions = stagingInstructions.trim();
@@ -47,17 +48,15 @@ export function useStagingSubmission({
   
   const handleSubmit = async () => {
     if (!userId) {
-      toast.error('You must be logged in to submit a staging request');
-      return;
+      return reportError('submission', 'You must be logged in to submit a staging request');
     }
 
     if (originalImageUrls.length === 0) {
-      toast.error('Please upload at least one image');
-      return;
+      return reportError('submission', 'Please upload at least one image');
     }
 
-    // Reset any previous errors
-    setLastError(null);
+    // Clear any previous errors
+    clearError();
     
     // If no furniture is selected, just inform the user that AI will choose appropriate furniture
     if (selectedFurniture.length === 0) {
@@ -113,10 +112,9 @@ export function useStagingSubmission({
     } catch (error) {
       console.error('Error processing staging request:', error);
       setIsProcessing(false);
-      toast.error('An error occurred while processing your request. Please try again.');
-      setLastError(error.message);
+      return reportError('submission', 'An error occurred while processing your request. Please try again.', error);
     }
   };
 
-  return { handleSubmit, lastError };
+  return { handleSubmit };
 }

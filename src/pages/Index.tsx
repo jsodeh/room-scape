@@ -8,6 +8,8 @@ import StagingWizard from '@/components/staging-wizard/StagingWizard';
 import { StagingProvider, useStagingContext } from '@/context/StagingContext';
 import { useStagingProcessor } from '@/hooks/useStagingProcessor';
 import { useAuth } from '@/context/AuthContext';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 const StagingContent = () => {
   const { user } = useAuth();
@@ -28,7 +30,12 @@ const StagingContent = () => {
     resetState
   } = useStagingContext();
 
-  const { handleSubmit, handleRegenerate } = useStagingProcessor({
+  const { 
+    handleSubmit, 
+    handleRegenerate, 
+    hasErrors, 
+    getFirstError 
+  } = useStagingProcessor({
     userId: user?.id,
     originalImageUrls,
     selectedFurniture,
@@ -64,6 +71,15 @@ const StagingContent = () => {
           Upload photos, select furniture, and provide instructions to get started.
         </p>
       </div>
+      
+      {hasErrors() && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {getFirstError()?.message || 'An error occurred. Please try again.'}
+          </AlertDescription>
+        </Alert>
+      )}
       
       <StagingWizard onSubmit={handleSubmit} />
     </div>

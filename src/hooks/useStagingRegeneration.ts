@@ -1,8 +1,8 @@
 
-import { useState } from 'react';
 import { toast } from 'sonner';
 import { generateStagedImages } from '@/services/stagingService';
 import { FurnitureItem } from '@/types/database';
+import { useErrorReporting } from './useErrorReporting';
 
 interface UseStagingRegenerationProps {
   userId?: string;
@@ -25,7 +25,7 @@ export function useStagingRegeneration({
   setIsProcessing,
   setIsComplete
 }: UseStagingRegenerationProps) {
-  const [lastError, setLastError] = useState<string | null>(null);
+  const { reportError, clearError } = useErrorReporting();
 
   const createFinalInstructions = () => {
     let finalInstructions = stagingInstructions.trim();
@@ -42,12 +42,11 @@ export function useStagingRegeneration({
 
   const handleRegenerate = async () => {
     if (!currentProjectId || !userId) {
-      toast.error('Cannot regenerate without an active project');
-      return;
+      return reportError('regeneration', 'Cannot regenerate without an active project');
     }
     
-    // Reset error state
-    setLastError(null);
+    // Clear any previous errors
+    clearError();
     
     setIsProcessing(true);
     setIsComplete(false);
@@ -69,10 +68,9 @@ export function useStagingRegeneration({
     } catch (error) {
       console.error('Error regenerating staged room:', error);
       setIsProcessing(false);
-      toast.error('An error occurred while regenerating. Please try again.');
-      setLastError(error.message);
+      return reportError('regeneration', 'An error occurred while regenerating. Please try again.', error);
     }
   };
 
-  return { handleRegenerate, lastError };
+  return { handleRegenerate };
 }
