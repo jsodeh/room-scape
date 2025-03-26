@@ -65,7 +65,7 @@ serve(async (req) => {
       // Fetch the room image as binary data
       console.log("Fetching room image from URL:", roomImageUrl);
       const roomImageData = await fetchImage(roomImageUrl, "room");
-      console.log("Room image fetched successfully");
+      console.log("Room image fetched successfully, size:", roomImageData.byteLength);
 
       // Create prompt based on inputs
       let prompt = createPrompt(instructions, furnitureUrls, referenceImageUrl);

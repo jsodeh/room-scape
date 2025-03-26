@@ -76,7 +76,7 @@ export async function generateStagedRoomV2(
     const timeoutId = setTimeout(() => {
       console.log("Request timeout reached, aborting");
       controller.abort();
-    }, 10000); // 10 second timeout (reduced from 12s)
+    }, 30000); // 30 second timeout for large images
     
     try {
       console.log("Sending request to Stability API now...");
@@ -160,7 +160,7 @@ export async function generateStagedRoomV2(
       console.error("Fetch error:", fetchError.name, fetchError.message);
       
       if (fetchError.name === 'AbortError') {
-        throw new Error("Stability API request timed out. Please use a smaller image (less than 4MB) or simpler request.");
+        throw new Error("Stability API request timed out. The image may be too large or complex. Please use a smaller image (less than 4MB) or simplify your request.");
       }
       throw fetchError;
     }
