@@ -16,6 +16,11 @@ export async function generateStagedRoomV2(
   console.log("Using Stability AI v2beta API to generate staged room");
   
   try {
+    if (!stabilityApiKey) {
+      console.error("STABILITY_API_KEY is not configured in environment variables");
+      throw new Error("STABILITY_API_KEY is not set. Please configure it in the Supabase secrets.");
+    }
+    
     // Convert image data to base64
     const base64Image = arrayBufferToBase64(roomImageData);
     
