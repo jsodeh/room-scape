@@ -19,37 +19,48 @@ export async function updateProjectStatus(
 
   try {
     console.log(`Updating project ${projectId} with status: ${status}`);
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("staging_projects")
       .update(updateData)
-      .eq("id", projectId);
+      .eq("id", projectId)
+      .select();
       
     if (error) {
       console.error("Failed to update project status:", error);
+    } else {
+      console.log(`Project status updated successfully to ${status}`);
     }
   } catch (updateError) {
-    console.error("Failed to update project status:", updateError);
+    console.error("Exception updating project status:", updateError);
   }
 }
 
 // Update project with results
 export async function updateProjectWithResults(projectId: string, stagedImages: string[]) {
-  const { data: updatedProject, error: updateError } = await supabase
-    .from("staging_projects")
-    .update({
-      staged_images: stagedImages,
-      status: "completed",
-      updated_at: new Date(),
-      error_message: null, // Clear any previous error messages
-    })
-    .eq("id", projectId)
-    .select()
-    .single();
+  console.log(`Updating project ${projectId} with ${stagedImages.length} images`);
   
-  if (updateError) {
-    console.error("Error updating project:", updateError);
-    throw updateError;
+  try {
+    const { data: updatedProject, error: updateError } = await supabase
+      .from("staging_projects")
+      .update({
+        staged_images: stagedImages,
+        status: "completed",
+        updated_at: new Date(),
+        error_message: null, // Clear any previous error messages
+      })
+      .eq("id", projectId)
+      .select()
+      .single();
+    
+    if (updateError) {
+      console.error("Error updating project with results:", updateError);
+      throw updateError;
+    }
+    
+    console.log("Project updated successfully with generated images");
+    return updatedProject;
+  } catch (error) {
+    console.error("Exception updating project with results:", error);
+    throw error;
   }
-  
-  return updatedProject;
 }

@@ -30,11 +30,19 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Edge function started at:", new Date().toISOString());
+    
     // Parse request body
     let requestBody;
     try {
       requestBody = await req.json();
-      console.log("Request received with body:", JSON.stringify(requestBody));
+      console.log("Request received with parameters:", JSON.stringify({
+        projectId: requestBody.projectId,
+        roomImageUrl: requestBody.roomImageUrl ? "Provided" : "Missing",
+        furnitureUrls: requestBody.furnitureUrls?.length || 0,
+        instructionsLength: requestBody.instructions?.length || 0,
+        referenceImageUrl: requestBody.referenceImageUrl ? "Provided" : "Not Provided"
+      }));
     } catch (parseError) {
       console.error("Error parsing request body:", parseError);
       throw new Error("Invalid request format: " + parseError.message);
@@ -44,38 +52,35 @@ serve(async (req) => {
 
     // Validate required inputs
     if (!validateInputs(roomImageUrl, projectId, stabilityApiKey)) {
-      throw new Error("Missing required inputs");
+      throw new Error("Missing required inputs: roomImageUrl, projectId, or STABILITY_API_KEY");
     }
 
     console.log("Processing stage request for project:", projectId);
-    console.log("Room image:", roomImageUrl);
-    console.log("Furniture items count:", furnitureUrls?.length || 0);
-    console.log("Instructions length:", instructions?.length || 0);
-    console.log("Reference image:", referenceImageUrl || "None");
-
+    
     // Update project status to processing
+    console.log("Updating project status to processing...");
     await updateProjectStatus(projectId, "processing");
 
-    // Use a promise with timeout to prevent edge function from timing out without updating project status
     try {
       // Fetch the room image as binary data
-      console.log("Fetching room image...");
+      console.log("Fetching room image from URL:", roomImageUrl);
       const roomImageData = await fetchImage(roomImageUrl, "room");
-      console.log("Room image fetched successfully, size:", roomImageData.byteLength, "bytes");
+      console.log("Room image fetched successfully");
 
       // Create prompt based on inputs
       let prompt = createPrompt(instructions, furnitureUrls, referenceImageUrl);
-      console.log("Final prompt:", prompt);
+      console.log("Created prompt:", prompt);
 
       // Process and generate the staged room using Stability AI v2beta API
-      console.log("Calling Stability AI API...");
+      console.log("Starting Stability AI API processing...");
       const stagedImages = await generateStagedRoomV2(roomImageData, prompt, referenceImageUrl, projectId);
+      console.log("Stability AI processing complete, received images:", stagedImages.length);
 
       // Update the project with generated images
-      console.log("Processing complete, updating project with results...");
+      console.log("Updating project with results...");
       const updatedProject = await updateProjectWithResults(projectId, stagedImages);
 
-      console.log("Project updated successfully with staged images");
+      console.log("Project updated successfully, sending success response");
       return createSuccessResponse(updatedProject);
     } catch (processingError) {
       // Handle processing errors
@@ -83,6 +88,7 @@ serve(async (req) => {
       const errorMessage = processingError instanceof Error ? processingError.message : String(processingError);
       
       // Update project with detailed error
+      console.log("Updating project with failure status and error message");
       await updateProjectStatus(projectId, "failed", errorMessage);
       
       return createErrorResponse({
@@ -93,7 +99,7 @@ serve(async (req) => {
       });
     }
   } catch (error) {
-    console.error("Error in generate-staged-room function:", error);
+    console.error("Fatal error in generate-staged-room function:", error);
     return createErrorResponse(error);
   }
 });
@@ -126,6 +132,7 @@ function createErrorResponse(error) {
     const requestBody = error.requestBody || "{}";
     const parsedBody = typeof requestBody === 'string' ? JSON.parse(requestBody) : requestBody;
     if (parsedBody && parsedBody.projectId) {
+      console.log("Updating project status to failed for project:", parsedBody.projectId);
       updateProjectStatus(parsedBody.projectId, "failed", errorMessage);
     }
   } catch (e) {

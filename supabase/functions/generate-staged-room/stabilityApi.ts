@@ -22,12 +22,18 @@ export async function generateStagedRoomV2(
     }
     
     // Log image size which can help diagnose timeouts
-    console.log(`Room image size: ${(roomImageData.byteLength / (1024 * 1024)).toFixed(2)}MB`);
-    if (roomImageData.byteLength > 4 * 1024 * 1024) {
-      console.warn("Large image detected (>4MB). Attempting to process but this may cause timeouts.");
+    const imageSizeMB = roomImageData.byteLength / (1024 * 1024);
+    console.log(`Room image size: ${imageSizeMB.toFixed(2)}MB`);
+    
+    // Strict size limit check
+    if (imageSizeMB > 4) {
+      const sizeError = `Image size (${imageSizeMB.toFixed(2)}MB) exceeds the 4MB limit for Stability AI.`;
+      console.error(sizeError);
+      throw new Error(sizeError);
     }
     
     // Create FormData for multipart/form-data request
+    console.log("Creating FormData with image and parameters");
     const formData = new FormData();
     
     // Create a Blob from the room image data
@@ -42,26 +48,38 @@ export async function generateStagedRoomV2(
     if (referenceImageUrl) {
       try {
         const refImageData = await fetchImage(referenceImageUrl, "reference");
-        const refImageBlob = new Blob([new Uint8Array(refImageData)], { type: 'image/jpeg' });
-        formData.append('reference_image', refImageBlob, 'reference_image.jpg');
-        console.log("Added reference image to the request");
-        console.log(`Reference image size: ${(refImageData.byteLength / (1024 * 1024)).toFixed(2)}MB`);
+        
+        // Check reference image size too
+        const refSizeMB = refImageData.byteLength / (1024 * 1024);
+        console.log(`Reference image size: ${refSizeMB.toFixed(2)}MB`);
+        
+        if (refSizeMB > 4) {
+          console.warn(`Reference image is too large (${refSizeMB.toFixed(2)}MB). Skipping it.`);
+        } else {
+          const refImageBlob = new Blob([new Uint8Array(refImageData)], { type: 'image/jpeg' });
+          formData.append('reference_image', refImageBlob, 'reference_image.jpg');
+          console.log("Added reference image to the request");
+        }
       } catch (refError) {
         console.error("Error processing reference image, continuing without it:", refError);
       }
     }
     
     // Log details about the request for better debugging
-    console.log("Sending request to Stability AI v2beta API");
+    console.log("Preparing request to Stability AI v2beta API");
     console.log("Using endpoint: search-and-replace");
     console.log("Prompt being sent:", prompt);
     console.log("API Key valid:", stabilityApiKey.length > 0 ? "Yes" : "No");
     
     // Add timeout handling with AbortController
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+    const timeoutId = setTimeout(() => {
+      console.log("Request timeout reached, aborting");
+      controller.abort();
+    }, 12000); // 12 second timeout (reduced from 15s)
     
     try {
+      console.log("Sending request to Stability API now...");
       // Make request to Stability AI v2beta API with correct Accept header
       const response = await fetch(
         "https://api.stability.ai/v2beta/stable-image/edit/search-and-replace",
@@ -69,8 +87,8 @@ export async function generateStagedRoomV2(
           method: "POST",
           headers: {
             "Authorization": `Bearer ${stabilityApiKey}`,
-            // Critical fix: specify the proper Accept header that Stability API expects
-            "Accept": "image/*, application/json"
+            // Make sure Accept header is set correctly for this endpoint
+            "Accept": "application/json"
           },
           body: formData,
           signal: controller.signal
@@ -78,38 +96,45 @@ export async function generateStagedRoomV2(
       );
       
       clearTimeout(timeoutId);
+      console.log(`Stability API response status: ${response.status}`);
       
       // Detailed error logging for better debugging
       if (!response.ok) {
-        const responseBody = await response.text();
+        const responseText = await response.text();
+        console.error(`Stability API error response (${response.status}):`, responseText);
+        
         let errorMessage = `Stability API error (status ${response.status})`;
+        let errorDetails = "";
         
         try {
           // Try to parse as JSON for more specific error message
-          const errorJson = JSON.parse(responseBody);
+          const errorJson = JSON.parse(responseText);
           if (errorJson.message) {
-            errorMessage += `: ${errorJson.message}`;
+            errorDetails = errorJson.message;
           } else if (errorJson.errors && errorJson.errors.length > 0) {
-            errorMessage += `: ${errorJson.errors.join(', ')}`;
+            errorDetails = errorJson.errors.join(', ');
           } else {
-            errorMessage += `: ${responseBody.substring(0, 200)}`;
+            errorDetails = responseText.substring(0, 200);
           }
         } catch (e) {
           // If not valid JSON, use text
-          errorMessage += `: ${responseBody.substring(0, 200)}`;
+          errorDetails = responseText.substring(0, 200);
         }
         
+        errorMessage += `: ${errorDetails}`;
         console.error(errorMessage);
         
-        // Handle common error codes
+        // Handle common error codes with specific messages
         if (response.status === 401) {
-          throw new Error("Authentication failed: Invalid API key. Please check your Stability API key.");
+          throw new Error("Authentication failed: Invalid Stability API key. Please check your API key in Supabase secrets.");
         } else if (response.status === 400) {
-          throw new Error(`Bad request: ${errorMessage}. Check image format and prompt.`);
+          throw new Error(`Bad request: ${errorDetails}. Check image format and prompt.`);
         } else if (response.status === 429) {
           throw new Error("Rate limit exceeded. Please try again later.");
-        } else if (response.status === 413) {
-          throw new Error("Image is too large. Try a smaller image (less than 4MB).");
+        } else if (response.status === 413 || errorDetails.includes("too large")) {
+          throw new Error("Image is too large. Please use an image smaller than 4MB.");
+        } else if (response.status === 415 || errorDetails.includes("Unsupported Media Type")) {
+          throw new Error("Unsupported image format. Please use JPEG or PNG images.");
         } else {
           throw new Error(errorMessage);
         }
@@ -119,6 +144,7 @@ export async function generateStagedRoomV2(
       
       // Parse the response
       const result = await response.json();
+      console.log("Stability API response structure:", Object.keys(result));
       
       if (!result.artifacts || result.artifacts.length === 0) {
         throw new Error("No images returned from Stability API");
@@ -131,8 +157,10 @@ export async function generateStagedRoomV2(
       return imageUrls;
     } catch (fetchError) {
       clearTimeout(timeoutId);
+      console.error("Fetch error:", fetchError.name, fetchError.message);
+      
       if (fetchError.name === 'AbortError') {
-        throw new Error("Stability API request timed out. Try with a smaller image (less than 4MB) or simpler request.");
+        throw new Error("Stability API request timed out. Please use a smaller image (less than 4MB) or simpler request.");
       }
       throw fetchError;
     }

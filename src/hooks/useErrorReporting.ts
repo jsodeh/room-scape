@@ -25,32 +25,40 @@ export function useErrorReporting(options: ErrorReportingOptions = { showToasts:
     let formattedMessage = message;
     
     // Extract more details if error is about Stability API
-    if (typeof message === 'string' && message.includes('Stability')) {
-      if (message.includes('401')) {
-        formattedMessage = 'Invalid Stability API key. Please check your API key in Supabase secrets.';
-      } else if (message.includes('429')) {
-        formattedMessage = 'Stability API rate limit exceeded. Please try again later.';
-      } else if (message.includes('Edge function')) {
-        formattedMessage = 'Error connecting to Stability AI. Please check the Edge Function logs.';
-      } else if (message.includes('accept:') || message.includes('Accept')) {
-        formattedMessage = 'Format error with Stability API request. The server cannot process your request. Please try again with a different image.';
-      } else if (message.includes('too large')) {
-        formattedMessage = 'The image is too large for Stability AI. Please use an image smaller than 4MB.';
+    if (typeof message === 'string') {
+      // Handle Stability API specific errors
+      if (message.includes('Stability')) {
+        if (message.includes('401')) {
+          formattedMessage = 'Invalid Stability API key. Please check your API key in Supabase secrets.';
+        } else if (message.includes('429')) {
+          formattedMessage = 'Stability API rate limit exceeded. Please try again later.';
+        } else if (message.includes('Edge function')) {
+          formattedMessage = 'Error connecting to Stability AI. Please check the Edge Function logs.';
+        } else if (message.includes('accept:') || message.includes('Accept') || message.includes('Unsupported Media Type') || message.includes('415')) {
+          formattedMessage = 'Format error with Stability API request. Please use a JPEG or PNG image under 4MB.';
+        } else if (message.includes('too large') || message.includes('exceeds')) {
+          formattedMessage = 'The image is too large for Stability AI. Please use an image smaller than 4MB.';
+        }
       }
-    }
-    
-    // Handle Edge Function EarlyDrop scenarios
-    if (typeof message === 'string' && message.includes('Edge Function')) {
-      if (message.includes('non-2xx') || message.includes('returned a non-2xx')) {
-        formattedMessage = 'The Stability AI service returned an error. Please try again with a smaller image (less than 4MB) or different settings.';
-      } else if (message.includes('EarlyDrop') || message.includes('timeout')) {
-        formattedMessage = 'The edge function timed out. Please try with a smaller image (less than 4MB) or simpler request.';
+      
+      // Handle Edge Function failures
+      if (message.includes('Edge Function')) {
+        if (message.includes('non-2xx') || message.includes('returned a non-2xx')) {
+          formattedMessage = 'The Stability AI service returned an error. Please try again with a smaller image (less than 4MB) or different settings.';
+        } else if (message.includes('EarlyDrop') || message.includes('timeout')) {
+          formattedMessage = 'The edge function timed out. Please try with a smaller image (less than 4MB) or simpler request.';
+        }
       }
-    }
-    
-    // Handle specific timeouts
-    if (typeof message === 'string' && message.includes('timed out')) {
-      formattedMessage = 'The request timed out. Please try with a smaller image (less than 4MB) or simpler instructions.';
+      
+      // Handle timeouts
+      if (message.includes('timed out')) {
+        formattedMessage = 'The request timed out. Please try with a smaller image (less than 4MB) or simpler instructions.';
+      }
+      
+      // Handle image size errors more clearly
+      if (message.includes('4MB') || message.includes('image size')) {
+        formattedMessage = 'Your image is too large. Please resize it to be under 4MB and try again.';
+      }
     }
     
     // Update the errors state
