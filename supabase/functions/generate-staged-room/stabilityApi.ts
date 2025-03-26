@@ -39,7 +39,11 @@ export async function generateStagedRoomV2(
     // Create a Blob from the room image data
     const roomImageBlob = new Blob([new Uint8Array(roomImageData)], { type: 'image/jpeg' });
     formData.append('image', roomImageBlob, 'room_image.jpg');
-    formData.append('prompt', prompt);
+    
+    // IMPORTANT: API requires "search_prompt" parameter
+    formData.append('search_prompt', prompt);  // Add the search_prompt parameter
+    formData.append('prompt', prompt);         // Keep the original prompt parameter too for backward compatibility
+    
     formData.append('seed', Math.floor(Math.random() * 2147483647).toString());
     formData.append('cfg_scale', '7');
     formData.append('samples', '1');
