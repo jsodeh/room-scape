@@ -47,7 +47,7 @@ export async function generateStagedRoomV2(
     console.log("Sending request to Stability AI v2beta API");
     console.log("Using endpoint: search-and-replace");
     console.log("Prompt being sent:", prompt);
-    console.log("API Key length:", stabilityApiKey.length > 0 ? `${stabilityApiKey.length} characters` : "Not set");
+    console.log("API Key valid:", stabilityApiKey.length > 0 ? "Yes" : "No");
     
     // Make request to Stability AI v2beta API
     const response = await fetch(
@@ -62,26 +62,63 @@ export async function generateStagedRoomV2(
       }
     );
     
+    // Detailed error logging for better debugging
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Stability API error response:", response.status);
-      console.error("Error details:", errorText);
-      throw new Error(`Stability API error: ${response.status} - ${errorText}`);
+      const responseBody = await response.text();
+      let errorMessage = `Stability API error (status ${response.status})`;
+      
+      try {
+        // Try to parse as JSON for more specific error message
+        const errorJson = JSON.parse(responseBody);
+        if (errorJson.message) {
+          errorMessage += `: ${errorJson.message}`;
+        } else {
+          errorMessage += `: ${responseBody.substring(0, 200)}`;
+        }
+      } catch (e) {
+        // If not valid JSON, use text
+        errorMessage += `: ${responseBody.substring(0, 200)}`;
+      }
+      
+      console.error(errorMessage);
+      
+      // Handle common error codes
+      if (response.status === 401) {
+        throw new Error("Authentication failed: Invalid API key. Please check your Stability API key.");
+      } else if (response.status === 400) {
+        throw new Error(`Bad request: ${errorMessage}. Check image format and prompt.`);
+      } else if (response.status === 429) {
+        throw new Error("Rate limit exceeded. Please try again later.");
+      } else {
+        throw new Error(errorMessage);
+      }
     }
     
+    console.log("Processing successful response from Stability API");
+    
+    // Parse the response
     const result = await response.json();
-    console.log("Received successful response from Stability API");
     
     if (!result.artifacts || result.artifacts.length === 0) {
       throw new Error("No images returned from Stability API");
     }
     
+    console.log(`Received ${result.artifacts.length} generated images`);
+    
     // Process and upload images to Supabase storage
     const imageUrls = await processAndSaveResultImages(result.artifacts, projectId);
     return imageUrls;
   } catch (error) {
-    console.error("Error generating staged room:", error);
-    await updateProjectStatus(projectId, "failed", error.message);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Error generating staged room:", errorMessage);
+    
+    // Update project status with detailed error message
+    await updateProjectStatus(
+      projectId, 
+      "failed", 
+      `Stability AI error: ${errorMessage}`
+    );
+    
     throw error;
   }
 }

@@ -18,22 +18,38 @@ export function useErrorReporting(options: ErrorReportingOptions = { showToasts:
   });
 
   const reportError = useCallback((category: ErrorCategory, message: string, error?: unknown) => {
-    // Log to console for debugging
+    // Log to console for debugging with more details
     console.error(`Staging error (${category}):`, message, error);
+    
+    // Format error message based on error type
+    let formattedMessage = message;
+    
+    // Extract more details if error is about Stability API
+    if (typeof message === 'string' && message.includes('Stability')) {
+      if (message.includes('401')) {
+        formattedMessage = 'Invalid Stability API key. Please check your API key in Supabase secrets.';
+      } else if (message.includes('429')) {
+        formattedMessage = 'Stability API rate limit exceeded. Please try again later.';
+      } else if (message.includes('Edge function')) {
+        formattedMessage = 'Error connecting to Stability AI. Please check the Edge Function logs.';
+      }
+    }
     
     // Update the errors state
     setErrors(prev => ({
       ...prev,
-      [category]: message
+      [category]: formattedMessage
     }));
 
     // Show toast notification if enabled
     if (options.showToasts) {
-      const toastMessage = `Error in ${category}: ${message}`;
-      toast.error(toastMessage);
+      const toastMessage = `Error: ${formattedMessage}`;
+      toast.error(toastMessage, {
+        duration: 5000
+      });
     }
 
-    return message;
+    return formattedMessage;
   }, [options.showToasts]);
 
   const clearError = useCallback((category?: ErrorCategory) => {

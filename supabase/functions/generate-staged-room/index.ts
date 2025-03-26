@@ -63,14 +63,30 @@ serve(async (req) => {
     let prompt = createPrompt(instructions, furnitureUrls, referenceImageUrl);
     console.log("Final prompt:", prompt);
 
-    // Process and generate the staged room using Stability AI v2beta API
-    const stagedImages = await generateStagedRoomV2(roomImageData, prompt, referenceImageUrl, projectId);
+    try {
+      // Process and generate the staged room using Stability AI v2beta API
+      const stagedImages = await generateStagedRoomV2(roomImageData, prompt, referenceImageUrl, projectId);
 
-    // Update the project with generated images
-    const updatedProject = await updateProjectWithResults(projectId, stagedImages);
+      // Update the project with generated images
+      const updatedProject = await updateProjectWithResults(projectId, stagedImages);
 
-    console.log("Project updated successfully with staged images");
-    return createSuccessResponse(updatedProject);
+      console.log("Project updated successfully with staged images");
+      return createSuccessResponse(updatedProject);
+    } catch (apiError) {
+      // Handle API-specific errors
+      console.error("Error with Stability AI API:", apiError);
+      const errorMessage = apiError instanceof Error ? apiError.message : String(apiError);
+      
+      // Update project with detailed error
+      await updateProjectStatus(projectId, "failed", errorMessage);
+      
+      return createErrorResponse({
+        message: errorMessage,
+        name: "StabilityAPIError",
+        stack: apiError instanceof Error ? apiError.stack : undefined,
+        requestBody: requestBody
+      });
+    }
   } catch (error) {
     console.error("Error in generate-staged-room function:", error);
     return createErrorResponse(error);
