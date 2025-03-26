@@ -29,16 +29,16 @@ export async function processAndSaveResultImages(
     const artifact = artifacts[i];
     
     // Verify the image data exists and is valid
-    if (!artifact.image) {
-      console.error(`Image data missing for artifact ${i}`);
+    if (!artifact.image && typeof artifact !== 'string') {
+      console.error(`Image data missing for artifact ${i}:`, artifact);
       continue;
     }
     
-    console.log(`Processing artifact ${i}, image data type:`, typeof artifact.image);
-    
     try {
-      // Check if the image is already a base64 string
-      let base64Data = artifact.image;
+      // Handle both string format and object format
+      let base64Data = typeof artifact === 'string' ? artifact : artifact.image;
+      
+      console.log(`Processing artifact ${i}, image data type:`, typeof base64Data);
       
       // Remove data URL prefix if present
       if (base64Data.startsWith('data:')) {

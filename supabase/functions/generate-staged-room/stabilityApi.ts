@@ -40,9 +40,8 @@ export async function generateStagedRoomV2(
     const roomImageBlob = new Blob([new Uint8Array(roomImageData)], { type: 'image/jpeg' });
     formData.append('image', roomImageBlob, 'room_image.jpg');
     
-    // IMPORTANT: API requires "search_prompt" parameter
-    formData.append('search_prompt', prompt);  // Add the search_prompt parameter
-    formData.append('prompt', prompt);         // Keep the original prompt parameter too for backward compatibility
+    // Based on Stability AI documentation the search_prompt is required
+    formData.append('search_prompt', prompt);  
     
     formData.append('seed', Math.floor(Math.random() * 2147483647).toString());
     formData.append('cfg_scale', '7');
@@ -153,34 +152,31 @@ export async function generateStagedRoomV2(
       // Log the full response for debugging
       console.log("Full Stability API response:", JSON.stringify(result, null, 2));
       
-      // Check for different response structures from Stability API v2beta
+      // According to the documentation, the response should contain the images directly in the result
       let artifacts = [];
       
-      if (result.artifacts && result.artifacts.length > 0) {
-        // Standard expected structure
-        artifacts = result.artifacts;
-        console.log(`Found ${artifacts.length} images in 'artifacts' array`);
-      } else if (result.result && result.result.images && result.result.images.length > 0) {
-        // Alternative structure sometimes returned
-        artifacts = result.result.images.map(img => ({ image: img }));
-        console.log(`Found ${artifacts.length} images in 'result.images' array`);
-      } else if (result.images && result.images.length > 0) {
-        // Another possible structure
+      // Expected result structure from Stability API docs
+      if (result.result && Array.isArray(result.result)) {
+        artifacts = result.result.map(img => ({ image: img }));
+        console.log(`Found ${artifacts.length} images in 'result' array`);
+      } else if (result.images && Array.isArray(result.images)) {
         artifacts = result.images.map(img => ({ image: typeof img === 'string' ? img : img.image }));
         console.log(`Found ${artifacts.length} images in 'images' array`);
+      } else if (result.artifacts && Array.isArray(result.artifacts)) {
+        artifacts = result.artifacts;
+        console.log(`Found ${artifacts.length} images in 'artifacts' array`);
       } else if (result.output && Array.isArray(result.output)) {
-        // Yet another structure seen in some versions
         artifacts = result.output.map(img => ({ image: img }));
         console.log(`Found ${artifacts.length} images in 'output' array`);
       } else {
-        // Log more information about the response to help diagnose
+        // Dump the entire response structure for debugging
         console.error("Unexpected response structure from Stability API, no images found");
-        console.error("Response keys:", Object.keys(result));
-        throw new Error(`No images returned from Stability API. Response structure: ${JSON.stringify(Object.keys(result))}`);
+        console.error("Response structure:", JSON.stringify(result, null, 2));
+        throw new Error(`No images found in Stability API response. Please check your API key and request parameters.`);
       }
       
       if (artifacts.length === 0) {
-        throw new Error("No images returned from Stability API");
+        throw new Error("No images returned from Stability API. Please check your prompt and try again.");
       }
       
       console.log(`Processing ${artifacts.length} generated images`);
