@@ -1,6 +1,6 @@
 
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { RefreshCw } from 'lucide-react';
@@ -38,7 +38,7 @@ const FurnitureCategoryBar = ({
       </div>
       
       <div className="relative overflow-hidden">
-        <ScrollArea className="w-full" orientation="horizontal">
+        <ScrollArea className="w-full">
           <div className="flex space-x-2 pb-4" style={{ width: 'max-content' }}>
             {isLoading ? (
               <>
@@ -70,6 +70,7 @@ const FurnitureCategoryBar = ({
               </>
             )}
           </div>
+          <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </div>
     </div>
