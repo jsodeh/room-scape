@@ -76,7 +76,7 @@ export async function generateStagedRoomV2(
     const timeoutId = setTimeout(() => {
       console.log("Request timeout reached, aborting");
       controller.abort();
-    }, 12000); // 12 second timeout (reduced from 15s)
+    }, 10000); // 10 second timeout (reduced from 12s)
     
     try {
       console.log("Sending request to Stability API now...");
