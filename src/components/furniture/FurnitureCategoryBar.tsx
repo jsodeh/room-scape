@@ -37,9 +37,9 @@ const FurnitureCategoryBar = ({
         </Button>
       </div>
       
-      <div className="relative">
-        <ScrollArea className="w-full max-w-full">
-          <div className="flex gap-2 pb-2 pr-4" style={{ minWidth: 'max-content' }}>
+      <div className="relative overflow-hidden">
+        <ScrollArea className="w-full" orientation="horizontal">
+          <div className="flex space-x-2 pb-4" style={{ width: 'max-content' }}>
             {isLoading ? (
               <>
                 {Array.from({ length: 5 }).map((_, i) => (
