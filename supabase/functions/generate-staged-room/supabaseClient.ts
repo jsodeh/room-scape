@@ -1,0 +1,10 @@
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+
+// Environment variables
+export const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+export const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+export const stabilityApiKey = Deno.env.get("STABILITY_API_KEY") || "";
+
+// Create and export the Supabase client
+export const supabase = createClient(supabaseUrl, supabaseServiceKey);

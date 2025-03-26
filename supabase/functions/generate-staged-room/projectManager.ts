@@ -1,5 +1,5 @@
 
-import { supabase } from "./index.ts";
+import { supabase } from "./supabaseClient.ts";
 
 // Update project status function
 export async function updateProjectStatus(

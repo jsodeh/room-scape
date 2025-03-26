@@ -1,5 +1,5 @@
 
-import { supabase } from "./index.ts";
+import { supabase } from "./supabaseClient.ts";
 import { arrayBufferToBase64 } from "./utils.ts";
 
 // Helper function to fetch images

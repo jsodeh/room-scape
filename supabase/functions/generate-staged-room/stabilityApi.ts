@@ -5,8 +5,7 @@ import { fetchImage } from "./imageProcessor.ts";
 import { StabilityApiClient } from "./stabilityApiClient.ts";
 import { prepareStabilityRequest } from "./stabilityRequestBuilder.ts";
 import { handleStabilityResponse } from "./stabilityResponseHandler.ts";
-
-const stabilityApiKey = Deno.env.get("STABILITY_API_KEY") || "";
+import { stabilityApiKey } from "./supabaseClient.ts";
 
 // Generate staged room using Stability AI v2beta API
 export async function generateStagedRoomV2(

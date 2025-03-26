@@ -4,12 +4,7 @@ import { validateInputs, createPrompt } from "./utils.ts";
 import { updateProjectStatus, updateProjectWithResults } from "./projectManager.ts";
 import { generateStagedRoomV2 } from "./stabilityApi.ts";
 import { fetchImage } from "./imageProcessor.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
-
-export const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-export const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-export const stabilityApiKey = Deno.env.get("STABILITY_API_KEY") || "";
-export const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { supabase, supabaseUrl, supabaseServiceKey, stabilityApiKey } from "./supabaseClient.ts";
 
 // Create a success response
 export function createSuccessResponse(updatedProject: any) {
