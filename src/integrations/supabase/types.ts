@@ -358,6 +358,7 @@ export type Database = {
       staging_projects: {
         Row: {
           created_at: string
+          error_message: string | null
           furniture_ids: string[]
           has_feedback: boolean | null
           id: string
@@ -371,6 +372,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          error_message?: string | null
           furniture_ids?: string[]
           has_feedback?: boolean | null
           id?: string
@@ -384,6 +386,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          error_message?: string | null
           furniture_ids?: string[]
           has_feedback?: boolean | null
           id?: string

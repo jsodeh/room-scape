@@ -33,6 +33,7 @@ export async function generateStagedRoomV2(
       try {
         const refImageData = await fetchImage(referenceImageUrl, "reference");
         requestBody.reference_image = arrayBufferToBase64(refImageData);
+        console.log("Added reference image to the request");
       } catch (refError) {
         console.error("Error processing reference image, continuing without it:", refError);
       }

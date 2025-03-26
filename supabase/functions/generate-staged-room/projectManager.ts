@@ -14,14 +14,19 @@ export async function updateProjectStatus(
   
   if (errorMessage) {
     updateData.error_message = errorMessage;
+    console.log(`Project ${projectId} failed with error: ${errorMessage}`);
   }
 
   try {
     console.log(`Updating project ${projectId} with status: ${status}`);
-    await supabase
+    const { error } = await supabase
       .from("staging_projects")
       .update(updateData)
       .eq("id", projectId);
+      
+    if (error) {
+      console.error("Failed to update project status:", error);
+    }
   } catch (updateError) {
     console.error("Failed to update project status:", updateError);
   }

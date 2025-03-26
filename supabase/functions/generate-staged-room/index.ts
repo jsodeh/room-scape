@@ -86,9 +86,10 @@ function createErrorResponse(error) {
   // Make sure to update project with error if we have a project ID
   // This is done here as a safeguard for any errors that might occur
   try {
-    const requestBody = JSON.parse(error.requestBody || "{}");
-    if (requestBody.projectId) {
-      updateProjectStatus(requestBody.projectId, "failed", error.message);
+    const requestBody = error.requestBody || "{}";
+    const parsedBody = typeof requestBody === 'string' ? JSON.parse(requestBody) : requestBody;
+    if (parsedBody && parsedBody.projectId) {
+      updateProjectStatus(parsedBody.projectId, "failed", error.message);
     }
   } catch (e) {
     console.error("Failed to extract project ID from error context:", e);
