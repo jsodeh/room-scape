@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TabsWrapper, TabsContent, TabsList, TabsTrigger } from '@/components/TabsWrapper';
 import { Upload, MessageSquare, Image } from 'lucide-react';
 import UploadStep from './UploadStep';
@@ -39,13 +39,17 @@ const StagingWizard = ({ onSubmit }: StagingWizardProps) => {
   const goToNextStep = () => {
     if (activeTab === 'upload' && isStepComplete('upload')) {
       setActiveTab('instructions');
+    } else if (activeTab === 'instructions') {
+      setActiveTab('results');
     }
   };
 
   // Auto-navigate to results when processing completes
-  if (isComplete && activeTab !== 'results') {
-    setActiveTab('results');
-  }
+  useEffect(() => {
+    if (isComplete && activeTab !== 'results') {
+      setActiveTab('results');
+    }
+  }, [isComplete, activeTab]);
 
   return (
     <TabsWrapper value={activeTab} onValueChange={setActiveTab} className="w-full">

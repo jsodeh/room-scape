@@ -52,11 +52,21 @@ export function useStagingSubmission({
     setIsProcessing(true);
     
     try {
+      // Prepare the final instructions
+      const finalInstructions = createFinalInstructions();
+      
       // Create a new staging project
       const project = await createStagingProject(
         userId, 
-        originalImageUrls
+        finalInstructions,
+        [], // Empty array for furniture IDs
+        originalImageUrls,
+        referenceImageUrl || undefined
       );
+      
+      if (!project) {
+        throw new Error('Failed to create staging project');
+      }
       
       // Save the project ID for polling
       setCurrentProjectId(project.id);
@@ -64,14 +74,10 @@ export function useStagingSubmission({
       // Use the first image for staging (for now we only support one image)
       const roomImageUrl = originalImageUrls[0];
       
-      // Prepare the final instructions
-      const finalInstructions = createFinalInstructions();
-      
       // Generate staged images
       await generateStagedImages(
         project.id,
         roomImageUrl,
-        [], // No furniture URLs since we removed that step
         finalInstructions,
         referenceImageUrl || undefined
       );

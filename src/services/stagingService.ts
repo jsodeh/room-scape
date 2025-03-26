@@ -51,7 +51,6 @@ export const createStagingProject = async (
 export const generateStagedImages = async (
   projectId: string,
   roomImageUrl: string,
-  furnitureUrls: string[],
   instructions: string,
   referenceImageUrl?: string
 ) => {
@@ -60,7 +59,6 @@ export const generateStagedImages = async (
     console.log('Generating staged images with:');
     console.log('- Project ID:', projectId);
     console.log('- Room image URL:', roomImageUrl);
-    console.log('- Furniture URLs:', furnitureUrls.length);
     console.log('- Instructions length:', instructions.length);
     console.log('- Reference image URL:', referenceImageUrl || 'none');
     
@@ -69,7 +67,6 @@ export const generateStagedImages = async (
         body: {
           projectId,
           roomImageUrl,
-          furnitureUrls,
           instructions,
           referenceImageUrl
         }

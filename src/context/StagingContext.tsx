@@ -1,6 +1,5 @@
 
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
-import { FurnitureItem } from '@/types/database';
 import { toast } from 'sonner';
 import { generateStagedImages } from '@/services/stagingService';
 
@@ -106,7 +105,6 @@ export function StagingProvider({ children }: { children: ReactNode }) {
       await generateStagedImages(
         currentProjectId,
         originalImageUrls[0],
-        [], // No furniture URLs since we removed that step
         finalInstructions,
         referenceImageUrl || undefined
       );
