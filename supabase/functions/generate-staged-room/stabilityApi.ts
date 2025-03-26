@@ -150,14 +150,43 @@ export async function generateStagedRoomV2(
       const result = await response.json();
       console.log("Stability API response structure:", Object.keys(result));
       
-      if (!result.artifacts || result.artifacts.length === 0) {
+      // Log the full response for debugging
+      console.log("Full Stability API response:", JSON.stringify(result, null, 2));
+      
+      // Check for different response structures from Stability API v2beta
+      let artifacts = [];
+      
+      if (result.artifacts && result.artifacts.length > 0) {
+        // Standard expected structure
+        artifacts = result.artifacts;
+        console.log(`Found ${artifacts.length} images in 'artifacts' array`);
+      } else if (result.result && result.result.images && result.result.images.length > 0) {
+        // Alternative structure sometimes returned
+        artifacts = result.result.images.map(img => ({ image: img }));
+        console.log(`Found ${artifacts.length} images in 'result.images' array`);
+      } else if (result.images && result.images.length > 0) {
+        // Another possible structure
+        artifacts = result.images.map(img => ({ image: typeof img === 'string' ? img : img.image }));
+        console.log(`Found ${artifacts.length} images in 'images' array`);
+      } else if (result.output && Array.isArray(result.output)) {
+        // Yet another structure seen in some versions
+        artifacts = result.output.map(img => ({ image: img }));
+        console.log(`Found ${artifacts.length} images in 'output' array`);
+      } else {
+        // Log more information about the response to help diagnose
+        console.error("Unexpected response structure from Stability API, no images found");
+        console.error("Response keys:", Object.keys(result));
+        throw new Error(`No images returned from Stability API. Response structure: ${JSON.stringify(Object.keys(result))}`);
+      }
+      
+      if (artifacts.length === 0) {
         throw new Error("No images returned from Stability API");
       }
       
-      console.log(`Received ${result.artifacts.length} generated images`);
+      console.log(`Processing ${artifacts.length} generated images`);
       
       // Process and upload images to Supabase storage
-      const imageUrls = await processAndSaveResultImages(result.artifacts, projectId);
+      const imageUrls = await processAndSaveResultImages(artifacts, projectId);
       return imageUrls;
     } catch (fetchError) {
       clearTimeout(timeoutId);
