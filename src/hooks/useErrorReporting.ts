@@ -32,19 +32,19 @@ export function useErrorReporting(options: ErrorReportingOptions = { showToasts:
         formattedMessage = 'Stability API rate limit exceeded. Please try again later.';
       } else if (message.includes('Edge function')) {
         formattedMessage = 'Error connecting to Stability AI. Please check the Edge Function logs.';
-      } else if (message.includes('accept:')) {
-        formattedMessage = 'Format error with Stability API request. Please try again with a different image.';
+      } else if (message.includes('accept:') || message.includes('Accept')) {
+        formattedMessage = 'Format error with Stability API request. The server cannot process your request. Please try again with a different image.';
       } else if (message.includes('too large')) {
-        formattedMessage = 'The image is too large for Stability AI. Please use an image smaller than 8MB.';
+        formattedMessage = 'The image is too large for Stability AI. Please use an image smaller than 4MB.';
       }
     }
     
     // Handle Edge Function EarlyDrop scenarios
     if (typeof message === 'string' && message.includes('Edge Function')) {
       if (message.includes('non-2xx') || message.includes('returned a non-2xx')) {
-        formattedMessage = 'The Stability AI service is experiencing issues. Please try again with a smaller image or different settings.';
+        formattedMessage = 'The Stability AI service returned an error. Please try again with a smaller image (less than 4MB) or different settings.';
       } else if (message.includes('EarlyDrop') || message.includes('timeout')) {
-        formattedMessage = 'The edge function timed out. Please try with a smaller image or simpler request.';
+        formattedMessage = 'The edge function timed out. Please try with a smaller image (less than 4MB) or simpler request.';
       }
     }
     

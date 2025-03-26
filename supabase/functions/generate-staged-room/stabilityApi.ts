@@ -23,8 +23,8 @@ export async function generateStagedRoomV2(
     
     // Log image size which can help diagnose timeouts
     console.log(`Room image size: ${(roomImageData.byteLength / (1024 * 1024)).toFixed(2)}MB`);
-    if (roomImageData.byteLength > 8 * 1024 * 1024) {
-      console.warn("Large image detected (>8MB). This may cause timeouts in the edge function.");
+    if (roomImageData.byteLength > 4 * 1024 * 1024) {
+      console.warn("Large image detected (>4MB). Attempting to process but this may cause timeouts.");
     }
     
     // Create FormData for multipart/form-data request
@@ -59,7 +59,7 @@ export async function generateStagedRoomV2(
     
     // Add timeout handling with AbortController
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000); // Reduced timeout to 20 seconds
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
     
     try {
       // Make request to Stability AI v2beta API with correct Accept header
@@ -69,8 +69,8 @@ export async function generateStagedRoomV2(
           method: "POST",
           headers: {
             "Authorization": `Bearer ${stabilityApiKey}`,
-            "Accept": "image/*, application/json" // Add Accept header with correct value
-            // Content-Type is automatically set by the FormData
+            // Critical fix: specify the proper Accept header that Stability API expects
+            "Accept": "image/*, application/json"
           },
           body: formData,
           signal: controller.signal
@@ -109,7 +109,7 @@ export async function generateStagedRoomV2(
         } else if (response.status === 429) {
           throw new Error("Rate limit exceeded. Please try again later.");
         } else if (response.status === 413) {
-          throw new Error("Image is too large. Try a smaller image (less than 8MB).");
+          throw new Error("Image is too large. Try a smaller image (less than 4MB).");
         } else {
           throw new Error(errorMessage);
         }
@@ -132,7 +132,7 @@ export async function generateStagedRoomV2(
     } catch (fetchError) {
       clearTimeout(timeoutId);
       if (fetchError.name === 'AbortError') {
-        throw new Error("Stability API request timed out. Try with a smaller image or simpler request.");
+        throw new Error("Stability API request timed out. Try with a smaller image (less than 4MB) or simpler request.");
       }
       throw fetchError;
     }
