@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { getFurnitureItems } from '@/services/furnitureService';
 import { FurnitureItem } from '@/types/database';
@@ -8,19 +7,6 @@ import FurnitureGrid from './FurnitureGrid';
 import CustomUploadPrompt from './CustomUploadPrompt';
 import SelectedItemsBar from './SelectedItemsBar';
 import CustomFurnitureUploader from './CustomFurnitureUploader';
-
-// Categories remain static but furniture items will be fetched from Supabase
-const FURNITURE_CATEGORIES = [
-  { id: 'all', name: 'All' },
-  { id: 'sofas', name: 'Sofas' },
-  { id: 'tables', name: 'Tables' },
-  { id: 'chairs', name: 'Chairs' },
-  { id: 'beds', name: 'Beds' },
-  { id: 'storage', name: 'Storage' },
-  { id: 'decor', name: 'Decor' },
-  { id: 'lighting', name: 'Lighting' },
-  { id: 'custom', name: 'My Uploads' },
-];
 
 interface FurnitureSelectorProps {
   onFurnitureSelected: (items: FurnitureItem[]) => void;
@@ -76,7 +62,6 @@ const FurnitureSelector = ({ onFurnitureSelected }: FurnitureSelectorProps) => {
   };
 
   const handleCustomImageUploaded = (imageUrl: string) => {
-    // Create a new custom item that matches the FurnitureItem type from types/database.ts
     const newCustomItem: FurnitureItem = {
       id: `custom-${Date.now()}`,
       name: 'Custom Furniture',
@@ -112,7 +97,6 @@ const FurnitureSelector = ({ onFurnitureSelected }: FurnitureSelectorProps) => {
         />
         
         <FurnitureCategoryBar 
-          categories={FURNITURE_CATEGORIES}
           selectedCategory={selectedCategory}
           onCategoryChange={setSelectedCategory}
         />

@@ -1,37 +1,74 @@
 
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { RefreshCw } from 'lucide-react';
+import { useFurnitureCategories } from '@/hooks/useFurnitureCategories';
 
 interface FurnitureCategoryBarProps {
-  categories: { id: string; name: string }[];
   selectedCategory: string;
   onCategoryChange: (category: string) => void;
+  categories?: { id: string; name: string }[]; // Make this optional
 }
 
 const FurnitureCategoryBar = ({ 
-  categories, 
   selectedCategory, 
-  onCategoryChange 
+  onCategoryChange,
+  categories: predefinedCategories
 }: FurnitureCategoryBarProps) => {
+  const { categories: databaseCategories, isLoading, refreshCategories } = useFurnitureCategories();
+  
+  // Use predefined categories if provided, otherwise use the ones fetched from the database
+  const categories = predefinedCategories || databaseCategories;
+
   return (
-    <ScrollArea className="whitespace-nowrap pb-2">
-      <div className="flex gap-2 animate-fade-in">
-        {categories.map((category, index) => (
-          <Button
-            key={category.id}
-            variant={selectedCategory === category.id ? "default" : "outline"}
-            className="rounded-full transition-all duration-300 transform"
-            onClick={() => onCategoryChange(category.id)}
-            style={{ 
-              animationDelay: `${index * 50}ms`,
-              transform: selectedCategory === category.id ? 'scale(1.05)' : 'scale(1)'
-            }}
-          >
-            {category.name}
-          </Button>
-        ))}
+    <div className="space-y-2">
+      <div className="flex justify-between items-center">
+        <h3 className="text-sm font-medium">Categories</h3>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={refreshCategories} 
+          className="h-8 px-2"
+          title="Refresh categories from database"
+        >
+          <RefreshCw className="h-4 w-4" />
+        </Button>
       </div>
-    </ScrollArea>
+      
+      <ScrollArea className="whitespace-nowrap pb-2">
+        {isLoading ? (
+          <div className="flex gap-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-20 rounded-full" />
+            ))}
+          </div>
+        ) : (
+          <div className="flex gap-2 animate-fade-in">
+            {categories.map((category, index) => (
+              <Button
+                key={category.id}
+                variant={selectedCategory === category.id ? "default" : "outline"}
+                className="rounded-full transition-all duration-300 transform"
+                onClick={() => onCategoryChange(category.id)}
+                style={{ 
+                  animationDelay: `${index * 50}ms`,
+                  transform: selectedCategory === category.id ? 'scale(1.05)' : 'scale(1)'
+                }}
+              >
+                {category.name}
+                {"count" in category && (
+                  <Badge variant="secondary" className="ml-1 text-xs">
+                    {(category as any).count}
+                  </Badge>
+                )}
+              </Button>
+            ))}
+          </div>
+        )}
+      </ScrollArea>
+    </div>
   );
 };
 
