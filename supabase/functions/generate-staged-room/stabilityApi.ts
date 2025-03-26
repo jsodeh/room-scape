@@ -21,9 +21,6 @@ export async function generateStagedRoomV2(
       throw new Error("STABILITY_API_KEY is not set. Please configure it in the Supabase secrets.");
     }
     
-    // Convert image data to base64
-    const base64Image = arrayBufferToBase64(roomImageData);
-    
     // Create FormData for multipart/form-data request
     const formData = new FormData();
     
@@ -50,6 +47,7 @@ export async function generateStagedRoomV2(
     console.log("Sending request to Stability AI v2beta API");
     console.log("Using endpoint: search-and-replace");
     console.log("Prompt being sent:", prompt);
+    console.log("API Key length:", stabilityApiKey.length > 0 ? `${stabilityApiKey.length} characters` : "Not set");
     
     // Make request to Stability AI v2beta API
     const response = await fetch(

@@ -68,6 +68,8 @@ export function useStagingProcessor({
           const project = await getStagingProject(currentProjectId);
           
           if (project) {
+            console.log(`Project status: ${project.status}`, project);
+            
             if (project.status === 'completed') {
               if (project.staged_images && project.staged_images.length > 0) {
                 setStagedImageResults(project.staged_images);
@@ -93,6 +95,8 @@ export function useStagingProcessor({
               // Still processing, keep polling
               console.log(`Project status: ${project.status}`);
             }
+          } else {
+            console.error('Could not retrieve project data during polling');
           }
         } catch (error) {
           console.error('Error polling project status:', error);
@@ -143,6 +147,7 @@ export function useStagingProcessor({
     }
     
     setIsProcessing(true);
+    toast.info('Starting the staging process. This may take a few minutes...');
     
     try {
       console.log('Starting staging process...');

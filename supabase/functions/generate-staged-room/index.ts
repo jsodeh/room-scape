@@ -30,7 +30,17 @@ serve(async (req) => {
   }
 
   try {
-    const { roomImageUrl, furnitureUrls, instructions, projectId, referenceImageUrl } = await req.json();
+    // Parse request body
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      console.log("Request received with body:", JSON.stringify(requestBody));
+    } catch (parseError) {
+      console.error("Error parsing request body:", parseError);
+      throw new Error("Invalid request format: " + parseError.message);
+    }
+    
+    const { roomImageUrl, furnitureUrls, instructions, projectId, referenceImageUrl } = requestBody;
 
     // Validate required inputs
     if (!validateInputs(roomImageUrl, projectId, stabilityApiKey)) {
@@ -83,13 +93,19 @@ function createSuccessResponse(updatedProject) {
 
 // Create an error response
 function createErrorResponse(error) {
+  const errorMessage = error.message || "Unknown error occurred";
+  const errorStack = error.stack || "";
+  
+  // Log detailed error information
+  console.error("Error details:", errorMessage);
+  console.error("Stack trace:", errorStack);
+  
   // Make sure to update project with error if we have a project ID
-  // This is done here as a safeguard for any errors that might occur
   try {
     const requestBody = error.requestBody || "{}";
     const parsedBody = typeof requestBody === 'string' ? JSON.parse(requestBody) : requestBody;
     if (parsedBody && parsedBody.projectId) {
-      updateProjectStatus(parsedBody.projectId, "failed", error.message);
+      updateProjectStatus(parsedBody.projectId, "failed", errorMessage);
     }
   } catch (e) {
     console.error("Failed to extract project ID from error context:", e);
@@ -98,7 +114,7 @@ function createErrorResponse(error) {
   return new Response(
     JSON.stringify({ 
       success: false, 
-      error: error.message 
+      error: errorMessage 
     }),
     { 
       status: 500, 
