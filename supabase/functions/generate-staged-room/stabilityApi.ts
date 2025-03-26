@@ -21,6 +21,12 @@ export async function generateStagedRoomV2(
       throw new Error("STABILITY_API_KEY is not set. Please configure it in the Supabase secrets.");
     }
     
+    // Log image size which can help diagnose timeouts
+    console.log(`Room image size: ${(roomImageData.byteLength / (1024 * 1024)).toFixed(2)}MB`);
+    if (roomImageData.byteLength > 8 * 1024 * 1024) {
+      console.warn("Large image detected (>8MB). This may cause timeouts in the edge function.");
+    }
+    
     // Create FormData for multipart/form-data request
     const formData = new FormData();
     
@@ -39,6 +45,7 @@ export async function generateStagedRoomV2(
         const refImageBlob = new Blob([new Uint8Array(refImageData)], { type: 'image/jpeg' });
         formData.append('reference_image', refImageBlob, 'reference_image.jpg');
         console.log("Added reference image to the request");
+        console.log(`Reference image size: ${(refImageData.byteLength / (1024 * 1024)).toFixed(2)}MB`);
       } catch (refError) {
         console.error("Error processing reference image, continuing without it:", refError);
       }
@@ -49,11 +56,10 @@ export async function generateStagedRoomV2(
     console.log("Using endpoint: search-and-replace");
     console.log("Prompt being sent:", prompt);
     console.log("API Key valid:", stabilityApiKey.length > 0 ? "Yes" : "No");
-    console.log("Room image size:", roomImageData.byteLength, "bytes");
     
     // Add timeout handling with AbortController
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // Reduced timeout to 20 seconds
     
     try {
       // Make request to Stability AI v2beta API with correct Accept header
@@ -103,7 +109,7 @@ export async function generateStagedRoomV2(
         } else if (response.status === 429) {
           throw new Error("Rate limit exceeded. Please try again later.");
         } else if (response.status === 413) {
-          throw new Error("Image is too large. Try a smaller image (less than 10MB).");
+          throw new Error("Image is too large. Try a smaller image (less than 8MB).");
         } else {
           throw new Error(errorMessage);
         }

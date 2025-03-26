@@ -56,8 +56,10 @@ serve(async (req) => {
     // Update project status to processing
     await updateProjectStatus(projectId, "processing");
 
-    // Fetch the room image as binary data
+    // Use a promise with timeout to prevent edge function from timing out without updating project status
     try {
+      // Fetch the room image as binary data
+      console.log("Fetching room image...");
       const roomImageData = await fetchImage(roomImageUrl, "room");
       console.log("Room image fetched successfully, size:", roomImageData.byteLength, "bytes");
 
@@ -65,41 +67,28 @@ serve(async (req) => {
       let prompt = createPrompt(instructions, furnitureUrls, referenceImageUrl);
       console.log("Final prompt:", prompt);
 
-      try {
-        // Process and generate the staged room using Stability AI v2beta API
-        const stagedImages = await generateStagedRoomV2(roomImageData, prompt, referenceImageUrl, projectId);
+      // Process and generate the staged room using Stability AI v2beta API
+      console.log("Calling Stability AI API...");
+      const stagedImages = await generateStagedRoomV2(roomImageData, prompt, referenceImageUrl, projectId);
 
-        // Update the project with generated images
-        const updatedProject = await updateProjectWithResults(projectId, stagedImages);
+      // Update the project with generated images
+      console.log("Processing complete, updating project with results...");
+      const updatedProject = await updateProjectWithResults(projectId, stagedImages);
 
-        console.log("Project updated successfully with staged images");
-        return createSuccessResponse(updatedProject);
-      } catch (apiError) {
-        // Handle API-specific errors
-        console.error("Error with Stability AI API:", apiError);
-        const errorMessage = apiError instanceof Error ? apiError.message : String(apiError);
-        
-        // Update project with detailed error
-        await updateProjectStatus(projectId, "failed", errorMessage);
-        
-        return createErrorResponse({
-          message: errorMessage,
-          name: "StabilityAPIError",
-          stack: apiError instanceof Error ? apiError.stack : undefined,
-          requestBody: requestBody
-        });
-      }
-    } catch (imageError) {
-      console.error("Error fetching room image:", imageError);
-      const errorMessage = `Failed to fetch room image: ${imageError.message || 'Unknown error'}`;
+      console.log("Project updated successfully with staged images");
+      return createSuccessResponse(updatedProject);
+    } catch (processingError) {
+      // Handle processing errors
+      console.error("Error processing image:", processingError);
+      const errorMessage = processingError instanceof Error ? processingError.message : String(processingError);
       
       // Update project with detailed error
       await updateProjectStatus(projectId, "failed", errorMessage);
       
       return createErrorResponse({
         message: errorMessage,
-        name: "ImageFetchError",
-        stack: imageError instanceof Error ? imageError.stack : undefined,
+        name: "ProcessingError",
+        stack: processingError instanceof Error ? processingError.stack : undefined,
         requestBody: requestBody
       });
     }

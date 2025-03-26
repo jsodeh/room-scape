@@ -34,6 +34,8 @@ export function useErrorReporting(options: ErrorReportingOptions = { showToasts:
         formattedMessage = 'Error connecting to Stability AI. Please check the Edge Function logs.';
       } else if (message.includes('accept:')) {
         formattedMessage = 'Format error with Stability API request. Please try again with a different image.';
+      } else if (message.includes('too large')) {
+        formattedMessage = 'The image is too large for Stability AI. Please use an image smaller than 8MB.';
       }
     }
     
@@ -44,6 +46,11 @@ export function useErrorReporting(options: ErrorReportingOptions = { showToasts:
       } else if (message.includes('EarlyDrop') || message.includes('timeout')) {
         formattedMessage = 'The edge function timed out. Please try with a smaller image or simpler request.';
       }
+    }
+    
+    // Handle specific timeouts
+    if (typeof message === 'string' && message.includes('timed out')) {
+      formattedMessage = 'The request timed out. Please try with a smaller image (less than 4MB) or simpler instructions.';
     }
     
     // Update the errors state
