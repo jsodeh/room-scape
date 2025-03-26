@@ -37,37 +37,41 @@ const FurnitureCategoryBar = ({
         </Button>
       </div>
       
-      <ScrollArea className="whitespace-nowrap pb-2">
-        {isLoading ? (
-          <div className="flex gap-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-10 w-20 rounded-full" />
-            ))}
+      <div className="relative">
+        <ScrollArea className="w-full max-w-full">
+          <div className="flex gap-2 pb-2 pr-4" style={{ minWidth: 'max-content' }}>
+            {isLoading ? (
+              <>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-20 rounded-full flex-shrink-0" />
+                ))}
+              </>
+            ) : (
+              <>
+                {categories.map((category, index) => (
+                  <Button
+                    key={category.id}
+                    variant={selectedCategory === category.id ? "default" : "outline"}
+                    className="rounded-full transition-all duration-300 transform flex-shrink-0"
+                    onClick={() => onCategoryChange(category.id)}
+                    style={{ 
+                      animationDelay: `${index * 50}ms`,
+                      transform: selectedCategory === category.id ? 'scale(1.05)' : 'scale(1)'
+                    }}
+                  >
+                    {category.name}
+                    {"count" in category && (
+                      <Badge variant="secondary" className="ml-1 text-xs">
+                        {(category as any).count}
+                      </Badge>
+                    )}
+                  </Button>
+                ))}
+              </>
+            )}
           </div>
-        ) : (
-          <div className="flex gap-2 animate-fade-in">
-            {categories.map((category, index) => (
-              <Button
-                key={category.id}
-                variant={selectedCategory === category.id ? "default" : "outline"}
-                className="rounded-full transition-all duration-300 transform"
-                onClick={() => onCategoryChange(category.id)}
-                style={{ 
-                  animationDelay: `${index * 50}ms`,
-                  transform: selectedCategory === category.id ? 'scale(1.05)' : 'scale(1)'
-                }}
-              >
-                {category.name}
-                {"count" in category && (
-                  <Badge variant="secondary" className="ml-1 text-xs">
-                    {(category as any).count}
-                  </Badge>
-                )}
-              </Button>
-            ))}
-          </div>
-        )}
-      </ScrollArea>
+        </ScrollArea>
+      </div>
     </div>
   );
 };
