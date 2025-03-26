@@ -19,20 +19,23 @@ export async function generateStagedRoomV2(
     // Convert image data to base64
     const base64Image = arrayBufferToBase64(roomImageData);
     
-    // Prepare request body for the v2beta search-and-replace endpoint
-    const requestBody: Record<string, any> = {
-      image: base64Image,
-      prompt: prompt,
-      seed: Math.floor(Math.random() * 2147483647),  // Random seed value
-      cfg_scale: 7,
-      samples: 1
-    };
+    // Create FormData for multipart/form-data request
+    const formData = new FormData();
+    
+    // Create a Blob from the room image data
+    const roomImageBlob = new Blob([new Uint8Array(roomImageData)], { type: 'image/jpeg' });
+    formData.append('image', roomImageBlob, 'room_image.jpg');
+    formData.append('prompt', prompt);
+    formData.append('seed', Math.floor(Math.random() * 2147483647).toString());
+    formData.append('cfg_scale', '7');
+    formData.append('samples', '1');
     
     // Reference image if provided
     if (referenceImageUrl) {
       try {
         const refImageData = await fetchImage(referenceImageUrl, "reference");
-        requestBody.reference_image = arrayBufferToBase64(refImageData);
+        const refImageBlob = new Blob([new Uint8Array(refImageData)], { type: 'image/jpeg' });
+        formData.append('reference_image', refImageBlob, 'reference_image.jpg');
         console.log("Added reference image to the request");
       } catch (refError) {
         console.error("Error processing reference image, continuing without it:", refError);
@@ -50,10 +53,9 @@ export async function generateStagedRoomV2(
         method: "POST",
         headers: {
           "Authorization": `Bearer ${stabilityApiKey}`,
-          "Content-Type": "application/json",
-          "Accept": "application/json"
+          // Content-Type is automatically set by the FormData
         },
-        body: JSON.stringify(requestBody)
+        body: formData
       }
     );
     
