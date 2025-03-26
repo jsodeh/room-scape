@@ -44,70 +44,89 @@ export async function generateStagedRoomV2(
       }
     }
     
+    // Log details about the request for better debugging
     console.log("Sending request to Stability AI v2beta API");
     console.log("Using endpoint: search-and-replace");
     console.log("Prompt being sent:", prompt);
     console.log("API Key valid:", stabilityApiKey.length > 0 ? "Yes" : "No");
+    console.log("Room image size:", roomImageData.byteLength, "bytes");
     
-    // Make request to Stability AI v2beta API
-    const response = await fetch(
-      "https://api.stability.ai/v2beta/stable-image/edit/search-and-replace",
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${stabilityApiKey}`,
-          // Content-Type is automatically set by the FormData
-        },
-        body: formData
-      }
-    );
+    // Add timeout handling with AbortController
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
     
-    // Detailed error logging for better debugging
-    if (!response.ok) {
-      const responseBody = await response.text();
-      let errorMessage = `Stability API error (status ${response.status})`;
+    try {
+      // Make request to Stability AI v2beta API
+      const response = await fetch(
+        "https://api.stability.ai/v2beta/stable-image/edit/search-and-replace",
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${stabilityApiKey}`,
+            // Content-Type is automatically set by the FormData
+          },
+          body: formData,
+          signal: controller.signal
+        }
+      );
       
-      try {
-        // Try to parse as JSON for more specific error message
-        const errorJson = JSON.parse(responseBody);
-        if (errorJson.message) {
-          errorMessage += `: ${errorJson.message}`;
-        } else {
+      clearTimeout(timeoutId);
+      
+      // Detailed error logging for better debugging
+      if (!response.ok) {
+        const responseBody = await response.text();
+        let errorMessage = `Stability API error (status ${response.status})`;
+        
+        try {
+          // Try to parse as JSON for more specific error message
+          const errorJson = JSON.parse(responseBody);
+          if (errorJson.message) {
+            errorMessage += `: ${errorJson.message}`;
+          } else {
+            errorMessage += `: ${responseBody.substring(0, 200)}`;
+          }
+        } catch (e) {
+          // If not valid JSON, use text
           errorMessage += `: ${responseBody.substring(0, 200)}`;
         }
-      } catch (e) {
-        // If not valid JSON, use text
-        errorMessage += `: ${responseBody.substring(0, 200)}`;
+        
+        console.error(errorMessage);
+        
+        // Handle common error codes
+        if (response.status === 401) {
+          throw new Error("Authentication failed: Invalid API key. Please check your Stability API key.");
+        } else if (response.status === 400) {
+          throw new Error(`Bad request: ${errorMessage}. Check image format and prompt.`);
+        } else if (response.status === 429) {
+          throw new Error("Rate limit exceeded. Please try again later.");
+        } else if (response.status === 413) {
+          throw new Error("Image is too large. Try a smaller image (less than 10MB).");
+        } else {
+          throw new Error(errorMessage);
+        }
       }
       
-      console.error(errorMessage);
+      console.log("Processing successful response from Stability API");
       
-      // Handle common error codes
-      if (response.status === 401) {
-        throw new Error("Authentication failed: Invalid API key. Please check your Stability API key.");
-      } else if (response.status === 400) {
-        throw new Error(`Bad request: ${errorMessage}. Check image format and prompt.`);
-      } else if (response.status === 429) {
-        throw new Error("Rate limit exceeded. Please try again later.");
-      } else {
-        throw new Error(errorMessage);
+      // Parse the response
+      const result = await response.json();
+      
+      if (!result.artifacts || result.artifacts.length === 0) {
+        throw new Error("No images returned from Stability API");
       }
+      
+      console.log(`Received ${result.artifacts.length} generated images`);
+      
+      // Process and upload images to Supabase storage
+      const imageUrls = await processAndSaveResultImages(result.artifacts, projectId);
+      return imageUrls;
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        throw new Error("Stability API request timed out. Try with a smaller image or simpler request.");
+      }
+      throw fetchError;
     }
-    
-    console.log("Processing successful response from Stability API");
-    
-    // Parse the response
-    const result = await response.json();
-    
-    if (!result.artifacts || result.artifacts.length === 0) {
-      throw new Error("No images returned from Stability API");
-    }
-    
-    console.log(`Received ${result.artifacts.length} generated images`);
-    
-    // Process and upload images to Supabase storage
-    const imageUrls = await processAndSaveResultImages(result.artifacts, projectId);
-    return imageUrls;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("Error generating staged room:", errorMessage);

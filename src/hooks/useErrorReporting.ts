@@ -35,6 +35,15 @@ export function useErrorReporting(options: ErrorReportingOptions = { showToasts:
       }
     }
     
+    // Handle Edge Function EarlyDrop scenarios
+    if (typeof message === 'string' && message.includes('Edge Function')) {
+      if (message.includes('non-2xx') || message.includes('returned a non-2xx')) {
+        formattedMessage = 'The Stability AI service is experiencing issues. Please try again with a smaller image or different settings.';
+      } else if (message.includes('EarlyDrop') || message.includes('timeout')) {
+        formattedMessage = 'The edge function timed out. Please try with a smaller image or simpler request.';
+      }
+    }
+    
     // Update the errors state
     setErrors(prev => ({
       ...prev,
