@@ -40,8 +40,9 @@ export async function generateStagedRoomV2(
     const roomImageBlob = new Blob([new Uint8Array(roomImageData)], { type: 'image/jpeg' });
     formData.append('image', roomImageBlob, 'room_image.jpg');
     
-    // Based on Stability AI documentation the search_prompt is required
-    formData.append('search_prompt', prompt);  
+    // According to Stability AI documentation, we need both prompt and search_prompt
+    formData.append('prompt', prompt);  // The desired result
+    formData.append('search_prompt', "room");  // What to look for in the image
     
     formData.append('seed', Math.floor(Math.random() * 2147483647).toString());
     formData.append('cfg_scale', '7');
@@ -72,6 +73,7 @@ export async function generateStagedRoomV2(
     console.log("Preparing request to Stability AI v2beta API");
     console.log("Using endpoint: search-and-replace");
     console.log("Prompt being sent:", prompt);
+    console.log("Search prompt being sent: room");
     console.log("API Key valid:", stabilityApiKey.length > 0 ? "Yes" : "No");
     
     // Add timeout handling with AbortController
