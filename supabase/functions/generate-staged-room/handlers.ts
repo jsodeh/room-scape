@@ -2,9 +2,9 @@
 import { corsHeaders } from "./cors.ts";
 import { validateInputs, createPrompt } from "./utils.ts";
 import { updateProjectStatus, updateProjectWithResults } from "./projectManager.ts";
-import { generateStagedRoomV2 } from "./stabilityApi.ts";
 import { fetchImage } from "./imageProcessor.ts";
-import { supabase, supabaseUrl, supabaseServiceKey, stabilityApiKey } from "./supabaseClient.ts";
+import { supabase, supabaseUrl, supabaseServiceKey, geminiApiKey } from "./supabaseClient.ts";
+import { generateStagedRoomWithGemini } from "./geminiApi.ts";
 
 // Create a success response
 export function createSuccessResponse(updatedProject: any) {
@@ -65,7 +65,6 @@ export async function handleStagingRequest(req: Request) {
       console.log("Request received with parameters:", JSON.stringify({
         projectId: requestBody.projectId,
         roomImageUrl: requestBody.roomImageUrl ? "Provided" : "Missing",
-        furnitureUrls: requestBody.furnitureUrls?.length || 0,
         instructionsLength: requestBody.instructions?.length || 0,
         referenceImageUrl: requestBody.referenceImageUrl ? "Provided" : "Not Provided"
       }));
@@ -74,11 +73,11 @@ export async function handleStagingRequest(req: Request) {
       throw new Error("Invalid request format: " + parseError.message);
     }
     
-    const { roomImageUrl, furnitureUrls, instructions, projectId, referenceImageUrl } = requestBody;
+    const { roomImageUrl, instructions, projectId, referenceImageUrl } = requestBody;
 
     // Validate required inputs
-    if (!validateInputs(roomImageUrl, projectId, stabilityApiKey)) {
-      throw new Error("Missing required inputs: roomImageUrl, projectId, or STABILITY_API_KEY");
+    if (!validateInputs(roomImageUrl, projectId, geminiApiKey)) {
+      throw new Error("Missing required inputs: roomImageUrl, projectId, or GEMINI_API_KEY");
     }
 
     console.log("Processing stage request for project:", projectId);
@@ -94,13 +93,13 @@ export async function handleStagingRequest(req: Request) {
       console.log("Room image fetched successfully, size:", roomImageData.byteLength);
 
       // Create prompt based on inputs
-      let prompt = createPrompt(instructions, furnitureUrls, referenceImageUrl);
+      let prompt = createPrompt(instructions, referenceImageUrl);
       console.log("Created prompt:", prompt);
 
-      // Process and generate the staged room using Stability AI v2beta API
-      console.log("Starting Stability AI API processing...");
-      const stagedImages = await generateStagedRoomV2(roomImageData, prompt, referenceImageUrl, projectId);
-      console.log("Stability AI processing complete, received images:", stagedImages.length);
+      // Process and generate the staged room using Gemini 2.0 Flash
+      console.log("Starting Gemini 2.0 Flash API processing...");
+      const stagedImages = await generateStagedRoomWithGemini(roomImageData, prompt, referenceImageUrl, projectId);
+      console.log("Gemini processing complete, received images:", stagedImages.length);
 
       // Update the project with generated images
       console.log("Updating project with results...");

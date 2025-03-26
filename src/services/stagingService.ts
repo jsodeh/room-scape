@@ -47,7 +47,7 @@ export const createStagingProject = async (
   }
 };
 
-// Generate staged images using Stability AI
+// Generate staged images using Gemini
 export const generateStagedImages = async (
   projectId: string,
   roomImageUrl: string,
