@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import ResultsDisplay from '@/components/ResultsDisplay';
 import StagingWizard from '@/components/staging-wizard/StagingWizard';
 import { StagingProvider, useStagingContext } from '@/context/StagingContext';
 import { useStagingProcessor } from '@/hooks/useStagingProcessor';
@@ -15,7 +14,6 @@ const StagingContent = () => {
   const { user } = useAuth();
   const { 
     uploadedImages,
-    selectedFurniture,
     stagingInstructions,
     referenceImageUrl,
     isProcessing,
@@ -32,13 +30,11 @@ const StagingContent = () => {
 
   const { 
     handleSubmit, 
-    handleRegenerate, 
     hasErrors, 
     getFirstError 
   } = useStagingProcessor({
     userId: user?.id,
     originalImageUrls,
-    selectedFurniture,
     stagingInstructions,
     referenceImageUrl,
     currentProjectId,
@@ -48,27 +44,13 @@ const StagingContent = () => {
     setIsComplete
   });
 
-  if (isComplete) {
-    return (
-      <div className="max-w-5xl mx-auto pt-12">
-        <h1 className="text-3xl font-semibold text-center mb-8">Your Staged Room</h1>
-        <ResultsDisplay 
-          originalImages={originalImageUrls}
-          stagedImages={stagedImageResults}
-          onRegenerate={handleRegenerate}
-          onReset={resetState}
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-3xl mx-auto pt-12">
       <div className="text-center mb-10 space-y-3">
         <h1 className="text-3xl font-semibold">Virtual Room Staging</h1>
         <p className="text-gray-600 max-w-xl mx-auto">
-          Transform empty spaces into beautifully staged rooms in just a few steps.
-          Upload photos, select furniture, and provide instructions to get started.
+          Transform empty spaces into beautifully staged rooms with AI. 
+          Upload photos and provide instructions to get started.
         </p>
       </div>
       

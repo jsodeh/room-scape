@@ -1,14 +1,11 @@
 
-import { FurnitureItem } from '@/types/database';
 import { useProjectPolling } from './useProjectPolling';
 import { useStagingSubmission } from './useStagingSubmission';
-import { useStagingRegeneration } from './useStagingRegeneration';
 import { useErrorReporting } from './useErrorReporting';
 
 interface StagingProcessorProps {
   userId?: string;
   originalImageUrls: string[];
-  selectedFurniture: FurnitureItem[];
   stagingInstructions: string;
   referenceImageUrl: string | null;
   currentProjectId: string | null;
@@ -21,7 +18,6 @@ interface StagingProcessorProps {
 export function useStagingProcessor({
   userId,
   originalImageUrls,
-  selectedFurniture,
   stagingInstructions,
   referenceImageUrl,
   currentProjectId,
@@ -31,7 +27,7 @@ export function useStagingProcessor({
   setIsComplete
 }: StagingProcessorProps) {
   // Set up error reporting
-  const { errors, hasErrors, getFirstError } = useErrorReporting();
+  const { errors, hasErrors, getFirstError, reportError, clearError } = useErrorReporting();
 
   // Set up polling for project status updates
   const { resetPolling } = useProjectPolling({
@@ -45,28 +41,16 @@ export function useStagingProcessor({
   const { handleSubmit } = useStagingSubmission({
     userId,
     originalImageUrls,
-    selectedFurniture,
     stagingInstructions,
     referenceImageUrl,
     setCurrentProjectId,
-    setIsProcessing
-  });
-
-  // Set up regeneration functionality
-  const { handleRegenerate } = useStagingRegeneration({
-    userId,
-    currentProjectId,
-    originalImageUrls,
-    selectedFurniture,
-    stagingInstructions,
-    referenceImageUrl,
     setIsProcessing,
-    setIsComplete
+    reportError,
+    clearError
   });
 
   return {
     handleSubmit,
-    handleRegenerate,
     errors,
     hasErrors,
     getFirstError

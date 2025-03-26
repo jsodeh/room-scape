@@ -1,4 +1,3 @@
-
 // Validation function
 export function validateInputs(roomImageUrl: string, projectId: string, stabilityApiKey: string | undefined) {
   if (!roomImageUrl) {

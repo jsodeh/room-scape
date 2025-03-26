@@ -1,10 +1,10 @@
 
 import { useState } from 'react';
 import { TabsWrapper, TabsContent, TabsList, TabsTrigger } from '@/components/TabsWrapper';
-import { Upload, Sofa, MessageSquare } from 'lucide-react';
+import { Upload, MessageSquare, Image } from 'lucide-react';
 import UploadStep from './UploadStep';
-import FurnitureStep from './FurnitureStep';
 import InstructionsStep from './InstructionsStep';
+import ResultsStep from './ResultsStep';
 import { useStagingContext } from '@/context/StagingContext';
 
 interface StagingWizardProps {
@@ -16,21 +16,21 @@ const StagingWizard = ({ onSubmit }: StagingWizardProps) => {
   const { 
     uploadedImages, 
     originalImageUrls, 
-    selectedFurniture, 
     stagingInstructions,
-    isProcessing
+    isProcessing,
+    isComplete,
+    stagedImageResults
   } = useStagingContext();
 
   const isStepComplete = (step: string) => {
     switch (step) {
       case 'upload':
         return uploadedImages.length > 0 && originalImageUrls.length > 0;
-      case 'furniture':
-        // Furniture selection is optional
-        return true;
       case 'instructions':
         // Instructions are optional
         return true;
+      case 'results':
+        return isComplete && stagedImageResults.length > 0;
       default:
         return false;
     }
@@ -38,18 +38,14 @@ const StagingWizard = ({ onSubmit }: StagingWizardProps) => {
 
   const goToNextStep = () => {
     if (activeTab === 'upload' && isStepComplete('upload')) {
-      setActiveTab('furniture');
-    } else if (activeTab === 'furniture') {
-      // Allow going to instructions regardless of furniture selection
       setActiveTab('instructions');
     }
   };
 
-  const goToInstructionsDirectly = () => {
-    if (isStepComplete('upload')) {
-      setActiveTab('instructions');
-    }
-  };
+  // Auto-navigate to results when processing completes
+  if (isComplete && activeTab !== 'results') {
+    setActiveTab('results');
+  }
 
   return (
     <TabsWrapper value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -68,20 +64,6 @@ const StagingWizard = ({ onSubmit }: StagingWizardProps) => {
           )}
         </TabsTrigger>
         <TabsTrigger 
-          value="furniture" 
-          className="data-[state=active]:shadow-sm relative"
-          disabled={!isStepComplete('upload')}
-        >
-          <span className="flex items-center gap-2">
-            <Sofa className="h-4 w-4" />
-            <span className="hidden sm:inline">Select Furniture</span>
-            <span className="sm:hidden">Furniture</span>
-          </span>
-          {selectedFurniture.length > 0 && (
-            <span className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full" />
-          )}
-        </TabsTrigger>
-        <TabsTrigger 
           value="instructions" 
           className="data-[state=active]:shadow-sm relative"
           disabled={!isStepComplete('upload')}
@@ -95,6 +77,20 @@ const StagingWizard = ({ onSubmit }: StagingWizardProps) => {
             <span className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full" />
           )}
         </TabsTrigger>
+        <TabsTrigger 
+          value="results" 
+          className="data-[state=active]:shadow-sm relative"
+          disabled={!isStepComplete('upload') || isProcessing}
+        >
+          <span className="flex items-center gap-2">
+            <Image className="h-4 w-4" />
+            <span className="hidden sm:inline">View Results</span>
+            <span className="sm:hidden">Results</span>
+          </span>
+          {isStepComplete('results') && (
+            <span className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full" />
+          )}
+        </TabsTrigger>
       </TabsList>
       
       <div className="border rounded-lg p-6 bg-white shadow-sm">
@@ -102,15 +98,12 @@ const StagingWizard = ({ onSubmit }: StagingWizardProps) => {
           <UploadStep goToNextStep={goToNextStep} />
         </TabsContent>
         
-        <TabsContent value="furniture" className="mt-0">
-          <FurnitureStep 
-            goToNextStep={goToNextStep} 
-            skipToInstructions={goToInstructionsDirectly} 
-          />
-        </TabsContent>
-        
         <TabsContent value="instructions" className="mt-0">
           <InstructionsStep onSubmit={onSubmit} isProcessing={isProcessing} />
+        </TabsContent>
+        
+        <TabsContent value="results" className="mt-0">
+          <ResultsStep />
         </TabsContent>
       </div>
     </TabsWrapper>

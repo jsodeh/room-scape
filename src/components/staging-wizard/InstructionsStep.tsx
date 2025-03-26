@@ -1,9 +1,8 @@
 
 import { Button } from '@/components/ui/button';
-import { ImageIcon, Loader2, LightbulbIcon } from 'lucide-react';
+import { ImageIcon, Loader2 } from 'lucide-react';
 import StageInstructions from '@/components/StageInstructions';
 import { useStagingContext } from '@/context/StagingContext';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface InstructionsStepProps {
   onSubmit: () => void;
@@ -15,13 +14,9 @@ const InstructionsStep = ({ onSubmit, isProcessing }: InstructionsStepProps) => 
     handleInstructionsChange, 
     handleReferenceImageChange,
     handleReferenceImageUpload,
-    stagingInstructions,
-    uploadedImages,
-    selectedFurniture
+    uploadedImages
   } = useStagingContext();
 
-  // We're removing the mandatory check for instructions
-  // since we now handle empty instructions in the processor
   const hasImages = uploadedImages.length > 0;
   const canSubmit = hasImages && !isProcessing;
 
@@ -33,15 +28,6 @@ const InstructionsStep = ({ onSubmit, isProcessing }: InstructionsStepProps) => 
           Provide specific instructions on how you'd like the room to be staged or select a template. You can also upload a reference image.
         </p>
       </div>
-      
-      {selectedFurniture.length === 0 && (
-        <Alert className="bg-amber-50 border-amber-200">
-          <LightbulbIcon className="h-4 w-4 text-amber-500" />
-          <AlertDescription className="text-amber-800">
-            No furniture selected. You can still continue, but providing detailed instructions will help us stage your room better.
-          </AlertDescription>
-        </Alert>
-      )}
       
       <StageInstructions 
         onInstructionsChange={handleInstructionsChange}
