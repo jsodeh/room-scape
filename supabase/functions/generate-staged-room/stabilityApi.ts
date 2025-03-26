@@ -56,13 +56,14 @@ export async function generateStagedRoomV2(
     const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
     
     try {
-      // Make request to Stability AI v2beta API
+      // Make request to Stability AI v2beta API with correct Accept header
       const response = await fetch(
         "https://api.stability.ai/v2beta/stable-image/edit/search-and-replace",
         {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${stabilityApiKey}`,
+            "Accept": "image/*, application/json" // Add Accept header with correct value
             // Content-Type is automatically set by the FormData
           },
           body: formData,
@@ -82,6 +83,8 @@ export async function generateStagedRoomV2(
           const errorJson = JSON.parse(responseBody);
           if (errorJson.message) {
             errorMessage += `: ${errorJson.message}`;
+          } else if (errorJson.errors && errorJson.errors.length > 0) {
+            errorMessage += `: ${errorJson.errors.join(', ')}`;
           } else {
             errorMessage += `: ${responseBody.substring(0, 200)}`;
           }

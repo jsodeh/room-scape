@@ -32,6 +32,8 @@ export function useErrorReporting(options: ErrorReportingOptions = { showToasts:
         formattedMessage = 'Stability API rate limit exceeded. Please try again later.';
       } else if (message.includes('Edge function')) {
         formattedMessage = 'Error connecting to Stability AI. Please check the Edge Function logs.';
+      } else if (message.includes('accept:')) {
+        formattedMessage = 'Format error with Stability API request. Please try again with a different image.';
       }
     }
     
