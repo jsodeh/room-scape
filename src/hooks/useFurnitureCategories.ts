@@ -19,31 +19,39 @@ export const useFurnitureCategories = () => {
     setError(null);
 
     try {
-      // Get unique categories with item counts
-      const { data, error } = await supabase
+      // First, fetch all furniture items
+      const { data: furnitureItems, error: fetchError } = await supabase
         .from('furniture_items')
-        .select('category, count(*)')
-        .group('category')
-        .order('count', { ascending: false });
+        .select('category');
 
-      if (error) {
-        throw error;
+      if (fetchError) {
+        throw fetchError;
       }
+
+      // Count occurrences of each category
+      const categoryCounts: Record<string, number> = {};
+      furnitureItems.forEach((item) => {
+        const category = item.category;
+        categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+      });
 
       // Transform to the expected format
       const transformedCategories: CategoryCount[] = [
         // Always include the "all" option first
-        { id: 'all', name: 'All', count: 0 },
-        ...data.map(item => ({
-          id: item.category,
-          name: item.category.charAt(0).toUpperCase() + item.category.slice(1), // Capitalize the first letter
-          count: parseInt(item.count)
+        { id: 'all', name: 'All', count: furnitureItems.length },
+        ...Object.entries(categoryCounts).map(([category, count]) => ({
+          id: category,
+          name: category.charAt(0).toUpperCase() + category.slice(1), // Capitalize the first letter
+          count: count
         }))
       ];
 
-      // Update the count for "All"
-      const totalItems = transformedCategories.reduce((sum, cat) => cat.id === 'all' ? sum : sum + cat.count, 0);
-      transformedCategories[0].count = totalItems;
+      // Sort by count (descending)
+      transformedCategories.sort((a, b) => {
+        if (a.id === 'all') return -1; // Keep "all" at the top
+        if (b.id === 'all') return 1;  
+        return b.count - a.count;      // Sort others by count (descending)
+      });
 
       setCategories(transformedCategories);
     } catch (error: any) {
