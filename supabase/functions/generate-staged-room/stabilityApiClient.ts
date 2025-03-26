@@ -37,10 +37,11 @@ export class StabilityApiClient {
       clearTimeout(timeoutId);
       console.log(`Stability API response status: ${response.status}`);
       
-      // Handle error responses
+      // Enhanced error logging with full details
       if (!response.ok) {
         const responseText = await response.text();
         console.error(`Stability API error response (${response.status}):`, responseText);
+        console.error(`Request URL: ${this.baseUrl}${this.endpoint}`);
         
         let errorMessage = `Stability API error (status ${response.status})`;
         let errorDetails = "";
@@ -63,17 +64,13 @@ export class StabilityApiClient {
         errorMessage += `: ${errorDetails}`;
         console.error(errorMessage);
         
-        // Handle common error codes with specific messages
+        // Specific messaging for common error codes
         if (response.status === 401) {
           throw new Error("Authentication failed: Invalid Stability API key. Please check your API key in Supabase secrets.");
         } else if (response.status === 400) {
           throw new Error(`Bad request: ${errorDetails}. Check image format and prompt.`);
         } else if (response.status === 429) {
           throw new Error("Rate limit exceeded. Please try again later.");
-        } else if (response.status === 413 || errorDetails.includes("too large")) {
-          throw new Error("Image is too large. Please use an image smaller than 4MB.");
-        } else if (response.status === 415 || errorDetails.includes("Unsupported Media Type")) {
-          throw new Error("Unsupported image format. Please use JPEG or PNG images.");
         } else {
           throw new Error(errorMessage);
         }
@@ -81,9 +78,10 @@ export class StabilityApiClient {
       
       console.log("Processing successful response from Stability API");
       
-      // Parse the response
+      // Parse the response and log structure for debugging
       const result = await response.json();
-      console.log("Stability API response structure:", Object.keys(result));
+      console.log("Stability API response full structure:", JSON.stringify(result, null, 2));
+      console.log("Top level keys in response:", Object.keys(result));
       
       return result;
     } catch (fetchError) {
@@ -91,7 +89,7 @@ export class StabilityApiClient {
       console.error("Fetch error:", fetchError.name, fetchError.message);
       
       if (fetchError.name === 'AbortError') {
-        throw new Error("Stability API request timed out. The image may be too large or complex. Please use a smaller image (less than 4MB) or simplify your request.");
+        throw new Error("Stability API request timed out. The image may be too large or complex. Please try again with a smaller image or simplify your request.");
       }
       throw fetchError;
     }

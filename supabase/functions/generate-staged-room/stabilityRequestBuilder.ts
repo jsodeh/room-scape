@@ -28,11 +28,20 @@ export async function prepareStabilityRequest(
   
   // According to Stability AI documentation, we need both prompt and search_prompt
   formData.append('prompt', prompt);  // The desired result
-  formData.append('search_prompt', "room");  // What to look for in the image
+  formData.append('search_prompt', "room, interior");  // What to look for in the image - be more specific
   
+  // Add standard parameters
   formData.append('seed', Math.floor(Math.random() * 2147483647).toString());
   formData.append('cfg_scale', '7');
   formData.append('samples', '1');
+  
+  // More verbose debug info
+  console.log("Request parameters:");
+  console.log(`- Prompt: "${prompt}"`);
+  console.log(`- Search prompt: "room, interior"`);
+  console.log(`- Seed: ${formData.get('seed')}`);
+  console.log(`- CFG Scale: ${formData.get('cfg_scale')}`);
+  console.log(`- Samples: ${formData.get('samples')}`);
   
   // Reference image if provided
   if (referenceImageUrl) {
@@ -58,8 +67,6 @@ export async function prepareStabilityRequest(
   // Log details about the request for better debugging
   console.log("Preparing request to Stability AI v2beta API");
   console.log("Using endpoint: search-and-replace");
-  console.log("Prompt being sent:", prompt);
-  console.log("Search prompt being sent: room");
   
   return formData;
 }

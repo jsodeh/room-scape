@@ -33,9 +33,11 @@ export async function generateStagedRoomV2(
     );
     
     // Make the API request to Stability AI
+    console.log("Sending request to Stability AI...");
     const result = await stabilityClient.generateImage(formData);
     
     // Process the response and extract images
+    console.log("Processing response from Stability AI...");
     const artifacts = handleStabilityResponse(result);
     
     if (artifacts.length === 0) {
