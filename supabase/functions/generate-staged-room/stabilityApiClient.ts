@@ -1,8 +1,9 @@
 
 import { fetchImage } from "./imageProcessor.ts";
 import { prepareStabilityRequest } from "./stabilityRequestBuilder.ts";
-import { processStabilityResponse } from "./stabilityResponseHandler.ts";
+import { handleStabilityResponse } from "./stabilityResponseHandler.ts";
 import { updateProjectStatus } from "./projectManager.ts";
+import { processAndSaveResultImages } from "./imageProcessor.ts";
 import { stabilityApiKey } from "./supabaseClient.ts";
 
 // API endpoint for Stability Search and Replace
@@ -44,8 +45,14 @@ export async function generateStagedRoomWithStability(
       throw new Error(`Stability API error (status ${response.status}): ${errorText}`);
     }
     
-    // Extract and process the generated images
-    return await processStabilityResponse(response, projectId);
+    // Extract the JSON from the response
+    const result = await response.json();
+    
+    // Process the result to get the artifacts
+    const artifacts = handleStabilityResponse(result);
+    
+    // Process and save the generated images
+    return await processAndSaveResultImages(artifacts, projectId);
   } catch (error) {
     console.error("Error generating staged room with Stability AI:", error);
     await updateProjectStatus(projectId, "failed", `Stability AI error: ${error.message}`);
