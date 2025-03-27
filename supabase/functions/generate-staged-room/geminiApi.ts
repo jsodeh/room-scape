@@ -7,7 +7,7 @@ import { processAndSaveResultImages } from "./imageProcessor.ts";
 
 // Gemini API configuration
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta";
-const GEMINI_MODEL = "gemini-1.5-flash-latest"; // Using the latest flash model
+const GEMINI_MODEL = "gemini-2.0-flash-exp-image-generation"; // Using experimental image generation model
 
 // Function to generate a staged room using Gemini 2.0 Flash API
 export async function generateStagedRoomWithGemini(
@@ -17,7 +17,7 @@ export async function generateStagedRoomWithGemini(
   projectId: string
 ): Promise<string[]> {
   try {
-    console.log("Starting Gemini 2.0 Flash API processing...");
+    console.log("Starting Gemini 2.0 Flash Experimental Image Generation API processing...");
     
     // Verify Gemini API key is available
     if (!geminiApiKey) {
@@ -29,23 +29,19 @@ export async function generateStagedRoomWithGemini(
     
     // Construct a specific prompt for image-to-image generation
     const enhancedPrompt = `
-Generate a photorealistic virtual staging of this room based on the following instructions:
+Generate a photorealistic virtual staging of this room:
 ${prompt}
 
-IMPORTANT: You MUST output a RAW Base64-encoded PNG image of the staged room with NO explanation text.
-Do not include any text or description in your response, ONLY the base64-encoded PNG image.
-The generated image must maintain the original room's structure while adding the requested furnishings.
+The staged room should look professional and maintain the original room structure.
 `;
     
     console.log("Prompt length:", enhancedPrompt.length);
     
-    // Build Gemini API request for image generation
-    const apiUrl = `${GEMINI_API_URL}/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`;
-    
-    // Construct the request body for image-to-image generation
+    // Build the request body for the chat session
     const requestBody: any = {
       contents: [
         {
+          role: "user",
           parts: [
             {
               text: enhancedPrompt
@@ -60,10 +56,12 @@ The generated image must maintain the original room's structure while adding the
         }
       ],
       generation_config: {
-        temperature: 0.2,
+        temperature: 1,
         top_p: 0.95,
-        top_k: 32,
-        max_output_tokens: 4096
+        top_k: 40,
+        max_output_tokens: 8192,
+        response_modalities: ["image", "text"],
+        response_mime_type: "text/plain"
       }
     };
     
@@ -83,7 +81,7 @@ The generated image must maintain the original room's structure while adding the
         });
         
         // Update prompt to mention reference image
-        requestBody.contents[0].parts[0].text += "\nUse the second provided image as a style reference.";
+        requestBody.contents[0].parts[0].text += "\nUse the provided reference image as a style guide.";
       } catch (refError) {
         console.log("Could not load reference image:", refError);
       }
@@ -91,7 +89,8 @@ The generated image must maintain the original room's structure while adding the
     
     console.log("Sending request to Gemini API");
     
-    // Send request to Gemini API
+    // Send request to Gemini API using the chat completions endpoint
+    const apiUrl = `${GEMINI_API_URL}/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`;
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
@@ -110,71 +109,31 @@ The generated image must maintain the original room's structure while adding the
     const data = await response.json();
     console.log("Gemini API response received");
     
-    // Handle the response format for image generation
-    // Look for base64 image data in the response
+    // Extract images from the response
     const generatedImages: string[] = [];
     
     if (data.candidates && data.candidates.length > 0) {
-      const candidate = data.candidates[0];
-      
-      if (candidate.content && candidate.content.parts) {
-        for (const part of candidate.content.parts) {
-          // Check if the part contains image data directly
-          if (part.inline_data) {
-            console.log("Found inline image data in Gemini response");
-            generatedImages.push(part.inline_data.data);
-          } 
-          // Check if the part contains a text that's a base64 image
-          else if (part.text) {
-            // Try to extract a base64 image from text
-            console.log("Checking for base64 image in text response");
-            const base64Match = part.text.match(/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/);
-            if (base64Match) {
-              console.log("Found base64 image data in text");
-              generatedImages.push(base64Match[0]);
+      for (const candidate of data.candidates) {
+        if (candidate.content && candidate.content.parts) {
+          for (const part of candidate.content.parts) {
+            // Check for inline image data
+            if (part.inlineData) {
+              console.log("Found inline image data in response");
+              generatedImages.push(part.inlineData.data);
             }
           }
         }
       }
     }
     
-    // If no image data found, check if we got a text response containing a URL or base64 data
-    if (generatedImages.length === 0 && data.candidates && data.candidates[0].content.parts[0].text) {
-      const text = data.candidates[0].content.parts[0].text;
-      console.log("Examining text response for image data");
-      
-      // Check for base64 data in the text
-      const base64Pattern = /data:image\/[^;]+;base64,([^"'\s]+)/g;
-      let match;
-      while ((match = base64Pattern.exec(text)) !== null) {
-        console.log("Found base64 image in response text");
-        generatedImages.push(match[1]);
-      }
-      
-      // If still no images, check for URLs
-      if (generatedImages.length === 0) {
-        const urlPattern = /(https?:\/\/[^\s"']+\.(png|jpg|jpeg|gif))/g;
-        while ((match = urlPattern.exec(text)) !== null) {
-          console.log("Found image URL in response text:", match[1]);
-          try {
-            // Download the image from the URL
-            const imgResponse = await fetch(match[1]);
-            const buffer = await imgResponse.arrayBuffer();
-            generatedImages.push(arrayBufferToBase64(buffer));
-          } catch (e) {
-            console.error("Failed to fetch image from URL:", e);
-          }
-        }
-      }
+    if (generatedImages.length === 0) {
+      // If no images found in the expected format, check the full response for debugging
+      console.error("Unexpected Gemini response format:", JSON.stringify(data));
+      throw new Error("Gemini did not return any images. Please try updating your prompt or contact support.");
     }
     
-    if (generatedImages.length > 0) {
-      console.log(`Processing ${generatedImages.length} images from Gemini API`);
-      return await processAndSaveResultImages(generatedImages.map(img => ({ image: img })), projectId);
-    } else {
-      console.error("Unexpected Gemini response format:", JSON.stringify(data));
-      throw new Error("Gemini did not return a valid image. Please try updating your prompt to be more specific about generating an image.");
-    }
+    console.log(`Processing ${generatedImages.length} images from Gemini API`);
+    return await processAndSaveResultImages(generatedImages.map(img => ({ image: img })), projectId);
   } catch (error) {
     console.error("Error generating staged room with Gemini:", error);
     await updateProjectStatus(projectId, "failed", `Gemini API error: ${error.message}`);

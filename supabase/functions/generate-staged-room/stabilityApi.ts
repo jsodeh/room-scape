@@ -98,10 +98,10 @@ export async function generateStagedRoom(
     throw new Error("Project ID is required for staged room generation");
   }
   
-  // Determine which API to use based on available keys and user preference
-  // Default to Gemini if available
+  // Determine which API to use based on available keys
+  // Prioritize Gemini if available
   if (geminiApiKey) {
-    console.log("Using Gemini 2.0 Flash API to generate staged room");
+    console.log("Using Gemini 2.0 Flash Experimental Image Generation API");
     return await generateStagedRoomWithGemini(roomImageData, prompt, referenceImageUrl, projectId);
   } else if (stabilityApiKey) {
     console.log("Falling back to Stability AI for image generation");
