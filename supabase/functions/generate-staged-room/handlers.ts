@@ -3,8 +3,8 @@ import { corsHeaders } from "./cors.ts";
 import { validateInputs, createPrompt } from "./utils.ts";
 import { updateProjectStatus, updateProjectWithResults } from "./projectManager.ts";
 import { fetchImage } from "./imageProcessor.ts";
-import { supabase, supabaseUrl, supabaseServiceKey, stabilityApiKey } from "./supabaseClient.ts";
-import { generateStagedRoomWithStability } from "./stabilityApi.ts";
+import { supabase, supabaseUrl, supabaseServiceKey, stabilityApiKey, geminiApiKey } from "./supabaseClient.ts";
+import { generateStagedRoom } from "./stabilityApi.ts";
 
 // Create a success response
 export function createSuccessResponse(updatedProject: any) {
@@ -76,8 +76,8 @@ export async function handleStagingRequest(req: Request) {
     const { roomImageUrl, instructions, projectId, referenceImageUrl } = requestBody;
 
     // Validate required inputs
-    if (!validateInputs(roomImageUrl, projectId, stabilityApiKey)) {
-      throw new Error("Missing required inputs: roomImageUrl, projectId, or STABILITY_API_KEY");
+    if (!validateInputs(roomImageUrl, projectId, geminiApiKey || stabilityApiKey)) {
+      throw new Error("Missing required inputs: roomImageUrl, projectId, or API keys (GEMINI_API_KEY or STABILITY_API_KEY)");
     }
 
     console.log("Processing stage request for project:", projectId);
@@ -96,10 +96,10 @@ export async function handleStagingRequest(req: Request) {
       let prompt = createPrompt(instructions, referenceImageUrl);
       console.log("Created prompt:", prompt);
 
-      // Process and generate the staged room using Stability API
-      console.log("Starting Stability API processing...");
-      const stagedImages = await generateStagedRoomWithStability(roomImageData, prompt, referenceImageUrl, projectId);
-      console.log("Stability processing complete, received images:", stagedImages.length);
+      // Process and generate the staged room
+      console.log("Starting image generation processing...");
+      const stagedImages = await generateStagedRoom(roomImageData, prompt, referenceImageUrl, projectId);
+      console.log("Image generation complete, received images:", stagedImages.length);
 
       // Update the project with generated images
       console.log("Updating project with results...");

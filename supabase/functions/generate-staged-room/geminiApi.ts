@@ -1,41 +1,15 @@
 
 // Import required modules
-import { supabase } from "./supabaseClient.ts";
+import { supabase, geminiApiKey } from "./supabaseClient.ts";
 import { arrayBufferToBase64 } from "./utils.ts";
 import { updateProjectStatus } from "./projectManager.ts";
+import { processAndSaveResultImages } from "./imageProcessor.ts";
 
 // Gemini API configuration
-const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta";
+const GEMINI_MODEL = "gemini-1.5-flash-latest"; // Using the latest flash model
 
-// Function to generate a staged room using Stability AI
-export async function generateStagedRoomWithStability(
-  roomImageData: ArrayBuffer,
-  prompt: string,
-  referenceImageUrl: string | undefined,
-  projectId: string
-): Promise<string[]> {
-  try {
-    console.log("Starting Stability API processing...");
-    // Use Stability API for image generation - this code should already exist
-    
-    // Your existing Stability API implementation here...
-    // This should include code for making the API request to Stability AI
-    // and processing the response
-    
-    // The function should return an array of image URLs or base64 strings
-    
-    // For now, this is a placeholder to prevent errors
-    throw new Error("Stability API implementation is not available. Please check your configuration.");
-    
-  } catch (error) {
-    console.error("Error generating staged room with Stability:", error);
-    await updateProjectStatus(projectId, "failed", `Stability API error: ${error.message}`);
-    throw error;
-  }
-}
-
-// Function to generate a staged room using Gemini Pro Vision
+// Function to generate a staged room using Gemini 2.0 Flash API
 export async function generateStagedRoomWithGemini(
   roomImageData: ArrayBuffer,
   prompt: string,
@@ -45,26 +19,31 @@ export async function generateStagedRoomWithGemini(
   try {
     console.log("Starting Gemini 2.0 Flash API processing...");
     
-    // Convert image to base64 for API request
+    // Verify Gemini API key is available
+    if (!geminiApiKey) {
+      throw new Error("Gemini API key is not configured");
+    }
+    
+    // Convert room image to base64 for API request
     const base64Image = arrayBufferToBase64(roomImageData);
     
-    // Construct a more explicit prompt for image generation
+    // Construct a specific prompt for image-to-image generation
     const enhancedPrompt = `
-I need you to generate a photorealistic image of a staged room based on this input room photo.
+Generate a photorealistic virtual staging of this room based on the following instructions:
 ${prompt}
 
-Important: Your response should be a high-quality, photorealistic image showing the room with the requested staging.
-The image should maintain the same perspective, lighting, and architectural features as the original room.
-Please provide the image in PNG format.
+IMPORTANT: You MUST output a RAW Base64-encoded PNG image of the staged room with NO explanation text.
+Do not include any text or description in your response, ONLY the base64-encoded PNG image.
+The generated image must maintain the original room's structure while adding the requested furnishings.
 `;
     
     console.log("Prompt length:", enhancedPrompt.length);
     
     // Build Gemini API request for image generation
-    const apiUrl = `${GEMINI_API_URL}/models/gemini-pro-vision:generateContent?key=${GEMINI_API_KEY}`;
+    const apiUrl = `${GEMINI_API_URL}/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`;
     
-    // Construct the request body with image data
-    const requestBody = {
+    // Construct the request body for image-to-image generation
+    const requestBody: any = {
       contents: [
         {
           parts: [
@@ -81,15 +60,17 @@ Please provide the image in PNG format.
         }
       ],
       generation_config: {
-        temperature: 0.4,
+        temperature: 0.2,
         top_p: 0.95,
-        max_output_tokens: 8192
+        top_k: 32,
+        max_output_tokens: 4096
       }
     };
     
     // Add reference image if provided
     if (referenceImageUrl) {
       try {
+        console.log("Adding reference image to Gemini request");
         const referenceImageResponse = await fetch(referenceImageUrl);
         const referenceImageBuffer = await referenceImageResponse.arrayBuffer();
         const referenceBase64 = arrayBufferToBase64(referenceImageBuffer);
@@ -129,19 +110,71 @@ Please provide the image in PNG format.
     const data = await response.json();
     console.log("Gemini API response received");
     
-    // Process and extract images from response
-    const stagedImages: string[] = [];
+    // Handle the response format for image generation
+    // Look for base64 image data in the response
+    const generatedImages: string[] = [];
     
-    // Since Gemini Pro Vision doesn't directly generate images, but might provide image URLs or descriptions
-    // we need to inform the user that we need to switch strategies
+    if (data.candidates && data.candidates.length > 0) {
+      const candidate = data.candidates[0];
+      
+      if (candidate.content && candidate.content.parts) {
+        for (const part of candidate.content.parts) {
+          // Check if the part contains image data directly
+          if (part.inline_data) {
+            console.log("Found inline image data in Gemini response");
+            generatedImages.push(part.inline_data.data);
+          } 
+          // Check if the part contains a text that's a base64 image
+          else if (part.text) {
+            // Try to extract a base64 image from text
+            console.log("Checking for base64 image in text response");
+            const base64Match = part.text.match(/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/);
+            if (base64Match) {
+              console.log("Found base64 image data in text");
+              generatedImages.push(base64Match[0]);
+            }
+          }
+        }
+      }
+    }
     
-    // This is where we need to integrate with the actual image generation service
-    // For now, we'll throw an error with a clear message
-    console.error("Unexpected Gemini response format:", JSON.stringify(data));
-    throw new Error("Gemini API did not return an image. We need to use a different approach for image generation.");
+    // If no image data found, check if we got a text response containing a URL or base64 data
+    if (generatedImages.length === 0 && data.candidates && data.candidates[0].content.parts[0].text) {
+      const text = data.candidates[0].content.parts[0].text;
+      console.log("Examining text response for image data");
+      
+      // Check for base64 data in the text
+      const base64Pattern = /data:image\/[^;]+;base64,([^"'\s]+)/g;
+      let match;
+      while ((match = base64Pattern.exec(text)) !== null) {
+        console.log("Found base64 image in response text");
+        generatedImages.push(match[1]);
+      }
+      
+      // If still no images, check for URLs
+      if (generatedImages.length === 0) {
+        const urlPattern = /(https?:\/\/[^\s"']+\.(png|jpg|jpeg|gif))/g;
+        while ((match = urlPattern.exec(text)) !== null) {
+          console.log("Found image URL in response text:", match[1]);
+          try {
+            // Download the image from the URL
+            const imgResponse = await fetch(match[1]);
+            const buffer = await imgResponse.arrayBuffer();
+            generatedImages.push(arrayBufferToBase64(buffer));
+          } catch (e) {
+            console.error("Failed to fetch image from URL:", e);
+          }
+        }
+      }
+    }
     
-    // Return the staged images
-    return stagedImages;
+    if (generatedImages.length > 0) {
+      console.log(`Processing ${generatedImages.length} images from Gemini API`);
+      return await processAndSaveResultImages(generatedImages.map(img => ({ image: img })), projectId);
+    } else {
+      console.error("Unexpected Gemini response format:", JSON.stringify(data));
+      throw new Error("Gemini did not return a valid image. Please try updating your prompt to be more specific about generating an image.");
+    }
   } catch (error) {
     console.error("Error generating staged room with Gemini:", error);
     await updateProjectStatus(projectId, "failed", `Gemini API error: ${error.message}`);
