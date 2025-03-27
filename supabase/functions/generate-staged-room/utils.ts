@@ -1,39 +1,39 @@
 
-// Validate required inputs for image generation
-export function validateInputs(roomImageUrl: string, projectId: string, apiKey: string): boolean {
-  if (!roomImageUrl) {
-    console.error("Missing required input: roomImageUrl");
-    return false;
-  }
-  
-  if (!projectId) {
-    console.error("Missing required input: projectId");
-    return false;
-  }
-  
-  if (!apiKey) {
-    console.error("Missing required API key for image generation");
-    return false;
-  }
-  
-  return true;
+import { supabase } from "./supabaseClient.ts";
+
+// Function to convert arraybuffer to base64
+export function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)));
 }
 
-// Create a comprehensive prompt for the image generation
+// Validate required inputs
+export function validateInputs(
+  roomImageUrl: string,
+  projectId: string,
+  stabilityApiKey: string | undefined
+): boolean {
+  return !!(roomImageUrl && projectId && stabilityApiKey);
+}
+
+// Create a prompt based on user instructions and reference
 export function createPrompt(instructions: string, referenceImageUrl?: string): string {
-  let basePrompt = instructions || "Stage this room as a modern living room with clean lines and a neutral color palette. Include a comfortable sofa, coffee table, and minimal decor. Add subtle accent pieces for visual interest.";
+  let basePrompt = "Virtually stage this room: ";
   
-  // Add explicit staging instructions if not already included
-  if (!basePrompt.toLowerCase().includes("stage this room")) {
-    basePrompt = "Virtually stage this room: " + basePrompt;
+  // Add user instructions if provided
+  if (instructions && instructions.trim().length > 0) {
+    basePrompt += `${instructions.trim()} `;
+  } else {
+    // Default staging instructions
+    basePrompt += "Create a modern, stylish living space with appropriate furniture, decor, and lighting. ";
   }
   
-  // Add specific instructions for photorealism and structure preservation
-  let fullPrompt = `${basePrompt} Select appropriate furniture that fits the room's style and dimensions. Make sure the final image looks photorealistic and maintains the original room structure.`;
-  
+  // Add reference image context if provided
   if (referenceImageUrl) {
-    fullPrompt += " Use the provided reference image for style inspiration.";
+    basePrompt += "Use the provided reference image as inspiration for the style and design. ";
   }
   
-  return fullPrompt;
+  // Add general guidance to ensure quality
+  basePrompt += "Select appropriate furniture that fits the room's style and dimensions. Make sure the final image looks photorealistic and maintains the original room structure.";
+  
+  return basePrompt;
 }
