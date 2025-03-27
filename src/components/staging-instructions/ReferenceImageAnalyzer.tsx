@@ -56,11 +56,6 @@ const ReferenceImageAnalyzer = ({
     }
   };
 
-  // Only show the component if there's a reference image
-  if (!referenceImageUrl) {
-    return null;
-  }
-
   return (
     <div className="mt-2 space-y-2">
       <div className="flex items-center gap-2">
