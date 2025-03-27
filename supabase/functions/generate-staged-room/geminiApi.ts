@@ -37,7 +37,8 @@ export async function generateStagedRoomWithGemini(
     const enhancedPrompt = `You are a virtual staging expert. ${prompt}
 Please transform this empty room image into a beautifully staged space.
 Make sure to maintain the room's structure, dimensions, and architectural elements.
-The staging should look realistic and not AI-generated.`;
+The staging should look realistic and not AI-generated.
+Return the result as a base64-encoded PNG image.`;
     
     // Prepare the request body
     const requestBody: any = {
@@ -59,8 +60,8 @@ The staging should look realistic and not AI-generated.`;
         temperature: 0.4,
         top_p: 1,
         top_k: 32,
-        max_output_tokens: 4096,
-        response_mime_type: "image/png"
+        max_output_tokens: 4096
+        // Removed response_mime_type that was causing the error
       }
     };
     
