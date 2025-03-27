@@ -26,11 +26,9 @@ const EditInstructionsInput = ({ value, onChange, onSubmit, isProcessing }: Edit
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    // Append the suggestion to the current value
-    onChange(prev => {
-      if (!prev.trim()) return suggestion;
-      return `${prev.trim()}. ${suggestion}`;
-    });
+    // Instead of passing a function to onChange, append the suggestion and call onChange directly
+    const newValue = value.trim() ? `${value.trim()}. ${suggestion}` : suggestion;
+    onChange(newValue);
   };
 
   return (
