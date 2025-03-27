@@ -4,7 +4,7 @@ import { validateInputs, createPrompt } from "./utils.ts";
 import { updateProjectStatus, updateProjectWithResults } from "./projectManager.ts";
 import { fetchImage } from "./imageProcessor.ts";
 import { supabase, supabaseUrl, supabaseServiceKey, stabilityApiKey } from "./supabaseClient.ts";
-import { generateStagedRoomWithStability } from "./geminiApi.ts";
+import { generateStagedRoomWithStability } from "./stabilityApi.ts";
 
 // Create a success response
 export function createSuccessResponse(updatedProject: any) {

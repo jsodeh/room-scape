@@ -5,6 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 export const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 export const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 export const stabilityApiKey = Deno.env.get("STABILITY_API_KEY") || "";
+export const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || "";
 
 // Create and export the Supabase client
 export const supabase = createClient(supabaseUrl, supabaseServiceKey);
