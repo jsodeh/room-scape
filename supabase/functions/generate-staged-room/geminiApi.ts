@@ -24,7 +24,7 @@ export async function generateStagedRoomWithGemini(
       throw new Error("Gemini API key is not configured");
     }
     
-    // Convert room image to base64 for API request
+    // Convert room image to base64 for API request - THIS IS THE PRIMARY IMAGE TO BE TRANSFORMED
     const base64Image = arrayBufferToBase64(roomImageData);
     
     // Construct a specific prompt for image-to-image generation
@@ -65,14 +65,16 @@ The staged room should look professional and maintain the original room structur
       }
     };
     
-    // Add reference image if provided
+    // Add reference image if provided - FOR STYLE GUIDANCE ONLY
     if (referenceImageUrl) {
       try {
-        console.log("Adding reference image to Gemini request");
+        console.log("Adding reference image to Gemini request as style guidance only");
         const referenceImageResponse = await fetch(referenceImageUrl);
         const referenceImageBuffer = await referenceImageResponse.arrayBuffer();
         const referenceBase64 = arrayBufferToBase64(referenceImageBuffer);
         
+        // Add reference image as a separate part AFTER the primary room image
+        // This ordering ensures the model understands which is the primary image to transform
         requestBody.contents[0].parts.push({
           inline_data: {
             mime_type: "image/jpeg",
@@ -80,8 +82,8 @@ The staged room should look professional and maintain the original room structur
           }
         });
         
-        // Update prompt to mention reference image
-        requestBody.contents[0].parts[0].text += "\nUse the provided reference image as a style guide.";
+        // Update prompt to clarify how the reference image should be used
+        requestBody.contents[0].parts[0].text += "\nUse the provided reference image ONLY as a style guide for furniture and decor choices. Transform the FIRST image (the room) based on this style guidance.";
       } catch (refError) {
         console.log("Could not load reference image:", refError);
       }

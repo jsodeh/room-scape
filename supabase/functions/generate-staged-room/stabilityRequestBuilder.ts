@@ -22,7 +22,8 @@ export async function prepareStabilityRequest(
   console.log("Creating FormData with image and parameters");
   const formData = new FormData();
   
-  // Create a Blob from the room image data
+  // Create a Blob from the room image data - THIS IS THE PRIMARY IMAGE TO BE TRANSFORMED
+  // Ensure this is the main image that will be staged (not the reference image)
   const roomImageBlob = new Blob([new Uint8Array(roomImageData)], { type: 'image/jpeg' });
   formData.append('image', roomImageBlob, 'room_image.jpg');
   
@@ -45,6 +46,7 @@ export async function prepareStabilityRequest(
   console.log(`- Samples: ${formData.get('samples')}`);
   
   // Reference image if provided - only include if under size limit
+  // The reference image should only influence the style, not be the main image to transform
   if (referenceImageUrl) {
     try {
       const refImageData = await fetchImage(referenceImageUrl, "reference");
@@ -57,8 +59,11 @@ export async function prepareStabilityRequest(
         console.warn(`Reference image is too large (${refSizeMB.toFixed(2)}MB). Skipping it.`);
       } else {
         const refImageBlob = new Blob([new Uint8Array(refImageData)], { type: 'image/jpeg' });
+        
+        // Use the correct parameter name for reference image
+        // This ensures it's used as style reference, not as the main image
         formData.append('reference_image', refImageBlob, 'reference_image.jpg');
-        console.log("Added reference image to the request");
+        console.log("Added reference image to the request as style reference only");
       }
     } catch (refError) {
       console.error("Error processing reference image, continuing without it:", refError);

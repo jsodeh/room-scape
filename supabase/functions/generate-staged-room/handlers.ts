@@ -87,7 +87,7 @@ export async function handleStagingRequest(req: Request) {
     await updateProjectStatus(projectId, "processing");
 
     try {
-      // Fetch the room image as binary data
+      // Fetch the room image as binary data - THIS IS THE PRIMARY IMAGE TO BE TRANSFORMED
       console.log("Fetching room image from URL:", roomImageUrl);
       const roomImageData = await fetchImage(roomImageUrl, "room");
       console.log("Room image fetched successfully, size:", roomImageData.byteLength);
@@ -97,6 +97,7 @@ export async function handleStagingRequest(req: Request) {
       console.log("Created prompt:", prompt);
 
       // Process and generate the staged room
+      // Make sure that roomImageData is passed as the primary image
       console.log("Starting image generation processing...");
       const stagedImages = await generateStagedRoom(roomImageData, prompt, referenceImageUrl, projectId);
       console.log("Image generation complete, received images:", stagedImages.length);
