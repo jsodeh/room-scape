@@ -21,6 +21,7 @@ export const initialStagingState = {
   
   // Result State
   stagedImageResults: [] as string[],
+  stagedImageHistory: [] as string[][], // Keep track of all staged versions
   currentProjectId: null as string | null,
   
   // Polling

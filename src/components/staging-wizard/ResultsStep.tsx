@@ -7,7 +7,8 @@ import { Loader2 } from 'lucide-react';
 const ResultsStep = () => {
   const { 
     originalImageUrls, 
-    stagedImageResults, 
+    stagedImageResults,
+    stagedImageHistory,
     isProcessing, 
     isComplete,
     isEditMode,
@@ -45,6 +46,7 @@ const ResultsStep = () => {
       <ResultsDisplay 
         originalImages={originalImageUrls}
         stagedImages={stagedImageResults}
+        stagedImageHistory={stagedImageHistory}
         onEdit={handleEdit}
         isEditMode={isEditMode}
         onReset={resetState}

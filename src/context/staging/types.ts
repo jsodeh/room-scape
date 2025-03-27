@@ -1,4 +1,5 @@
 
+// Add the stagedImageHistory to the context type
 export interface StagingContextType {
   // Image Upload State
   uploadedImages: File[];
@@ -20,18 +21,20 @@ export interface StagingContextType {
   
   // Result State
   stagedImageResults: string[];
+  stagedImageHistory: string[][];
   currentProjectId: string | null;
   
-  // Setters
-  setUploadedImages: (files: File[]) => void;
+  // State Setters
+  setUploadedImages: (images: File[]) => void;
   setStagingInstructions: (instructions: string) => void;
   setEditInstructions: (instructions: string) => void;
-  setIsEditMode: (isEdit: boolean) => void;
+  setIsEditMode: (isEditMode: boolean) => void;
   setReferenceImage: (file: File | null) => void;
   setReferenceImageUrl: (url: string | null) => void;
   setOriginalImagePreviews: (previews: string[]) => void;
   setOriginalImageUrls: (urls: string[]) => void;
   setStagedImageResults: (results: string[]) => void;
+  setStagedImageHistory: (history: string[][]) => void;
   setIsProcessing: (isProcessing: boolean) => void;
   setIsComplete: (isComplete: boolean) => void;
   setCurrentProjectId: (id: string | null) => void;
@@ -44,6 +47,6 @@ export interface StagingContextType {
   handleReferenceImageChange: (file: File | null) => void;
   handleReferenceImageUpload: (url: string | null) => void;
   handleEdit: (initialInstructions?: string) => void;
-  handleEditSubmit: () => void;
+  handleEditSubmit: () => Promise<void>;
   resetState: () => void;
 }

@@ -24,6 +24,7 @@ export function StagingProvider({ children }: { children: ReactNode }) {
   const [originalImagePreviews, setOriginalImagePreviews] = useState<string[]>(initialStagingState.originalImagePreviews);
   const [originalImageUrls, setOriginalImageUrls] = useState<string[]>(initialStagingState.originalImageUrls);
   const [stagedImageResults, setStagedImageResults] = useState<string[]>(initialStagingState.stagedImageResults);
+  const [stagedImageHistory, setStagedImageHistory] = useState<string[][]>(initialStagingState.stagedImageHistory);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(initialStagingState.currentProjectId);
   const [pollingInterval, setPollingInterval] = useState<number | null>(initialStagingState.pollingInterval);
 
@@ -35,6 +36,13 @@ export function StagingProvider({ children }: { children: ReactNode }) {
       }
     };
   }, [pollingInterval]);
+
+  // Track staged image history when results change
+  useEffect(() => {
+    if (stagedImageResults.length > 0 && isComplete) {
+      setStagedImageHistory(prevHistory => [...prevHistory, [...stagedImageResults]]);
+    }
+  }, [stagedImageResults, isComplete]);
 
   // Create handlers using our factory functions
   const handleImagesSelected = createImagesSelectedHandler(
@@ -89,6 +97,7 @@ export function StagingProvider({ children }: { children: ReactNode }) {
     setOriginalImagePreviews,
     setOriginalImageUrls,
     setStagedImageResults,
+    setStagedImageHistory,
     setCurrentProjectId,
     pollingInterval,
     setPollingInterval
@@ -108,6 +117,7 @@ export function StagingProvider({ children }: { children: ReactNode }) {
         originalImagePreviews,
         originalImageUrls,
         stagedImageResults,
+        stagedImageHistory,
         currentProjectId,
         setUploadedImages,
         setStagingInstructions,
@@ -118,6 +128,7 @@ export function StagingProvider({ children }: { children: ReactNode }) {
         setOriginalImagePreviews,
         setOriginalImageUrls,
         setStagedImageResults,
+        setStagedImageHistory,
         setIsProcessing,
         setIsComplete,
         setCurrentProjectId,

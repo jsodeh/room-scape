@@ -97,6 +97,7 @@ export const createResetStateHandler = (
   setOriginalImagePreviews: (previews: string[]) => void,
   setOriginalImageUrls: (urls: string[]) => void,
   setStagedImageResults: (results: string[]) => void,
+  setStagedImageHistory: (history: string[][]) => void,
   setCurrentProjectId: (id: string | null) => void,
   pollingInterval: number | null,
   setPollingInterval: (interval: number | null) => void
@@ -115,6 +116,7 @@ export const createResetStateHandler = (
     setOriginalImagePreviews([]);
     setOriginalImageUrls([]);
     setStagedImageResults([]);
+    setStagedImageHistory([]);
     setCurrentProjectId(null);
     
     if (pollingInterval) {
