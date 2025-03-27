@@ -364,6 +364,7 @@ export type Database = {
           id: string
           instructions: string | null
           original_images: string[]
+          reference_image: string | null
           staged_images: string[]
           status: string
           title: string
@@ -378,6 +379,7 @@ export type Database = {
           id?: string
           instructions?: string | null
           original_images?: string[]
+          reference_image?: string | null
           staged_images?: string[]
           status?: string
           title?: string
@@ -392,6 +394,7 @@ export type Database = {
           id?: string
           instructions?: string | null
           original_images?: string[]
+          reference_image?: string | null
           staged_images?: string[]
           status?: string
           title?: string
