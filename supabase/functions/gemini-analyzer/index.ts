@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { corsHeaders } from "../_shared/cors.ts"
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent"
 
 interface AnalysisRequest {
   imageUrl: string;
@@ -76,6 +76,7 @@ Deno.serve(async (req) => {
         top_k: 32,
         top_p: 1,
         max_output_tokens: 2048,
+        response_modalities: ["text"]
       }
     }
 
