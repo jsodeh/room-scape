@@ -155,7 +155,7 @@ ${basePrompt}`.trim()
   return `You are an expert in design analysis. Please analyze this image in detail and describe what you see, focusing on design elements, style, and notable features. ${basePrompt}`.trim()
 }
 
-// Helper function to fetch an image and convert it to base64
+// Helper function to fetch an image and convert it to base64 - FIXED to handle large images
 async function fetchImageAsBase64(url: string): Promise<string | null> {
   try {
     console.log(`Fetching image from URL: ${url}`)
@@ -168,7 +168,26 @@ async function fetchImageAsBase64(url: string): Promise<string | null> {
     
     const imageBuffer = await response.arrayBuffer()
     console.log(`Image fetched, size: ${imageBuffer.byteLength} bytes`)
-    return btoa(String.fromCharCode(...new Uint8Array(imageBuffer)))
+    
+    // Check if image is too large (above 2MB)
+    const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB
+    if (imageBuffer.byteLength > MAX_IMAGE_SIZE) {
+      console.log(`Image size exceeds 2MB, compressing or resizing recommended`)
+    }
+    
+    // Convert buffer to base64 in a safer way without recursion
+    let binary = '';
+    const bytes = new Uint8Array(imageBuffer);
+    const len = bytes.byteLength;
+    
+    // Process the array in chunks to avoid stack overflow
+    const CHUNK_SIZE = 1024;
+    for (let i = 0; i < len; i += CHUNK_SIZE) {
+      const chunk = bytes.slice(i, Math.min(i + CHUNK_SIZE, len));
+      chunk.forEach(b => binary += String.fromCharCode(b));
+    }
+    
+    return btoa(binary);
   } catch (error) {
     console.error(`Error fetching image from ${url}:`, error)
     return null
@@ -195,3 +214,4 @@ function extractInstructions(analysis: string, mode: string): string {
   
   return analysis
 }
+
