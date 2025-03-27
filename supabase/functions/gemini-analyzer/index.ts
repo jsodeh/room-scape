@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { corsHeaders } from "../_shared/cors.ts"
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent"
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
 
 interface AnalysisRequest {
   imageUrl: string;
@@ -63,19 +63,19 @@ Deno.serve(async (req) => {
           parts: [
             { text: geminiPrompt },
             {
-              inlineData: {
-                mimeType: 'image/jpeg',
+              inline_data: {
+                mime_type: 'image/jpeg',
                 data: imageData
               }
             }
           ]
         }
       ],
-      generationConfig: {
+      generation_config: {
         temperature: 0.4,
-        topK: 32,
-        topP: 1,
-        maxOutputTokens: 2048,
+        top_k: 32,
+        top_p: 1,
+        max_output_tokens: 2048,
       }
     }
 
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Extract the generated content
+    // Extract the generated content - updated for the new model response format
     const analysis = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
     console.log('Analysis received:', analysis.substring(0, 100) + '...')
     
