@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { corsHeaders } from "../_shared/cors.ts"
 
@@ -7,8 +6,10 @@ const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/
 
 interface AnalysisRequest {
   imageUrl: string;
+  imageUrls?: string[];
+  pdfUrl?: string;
   prompt?: string;
-  mode: 'staging' | 'interior' | 'general';
+  mode: 'staging' | 'interior' | 'general' | 'image' | 'pdf' | 'compare';
 }
 
 Deno.serve(async (req) => {
@@ -32,9 +33,10 @@ Deno.serve(async (req) => {
     const requestData = await req.json() as AnalysisRequest
     console.log('Request data:', JSON.stringify(requestData))
 
-    const { imageUrl, prompt, mode } = requestData
+    const { imageUrl, imageUrls, pdfUrl, prompt, mode } = requestData
+    const targetImageUrl = imageUrl || (imageUrls && imageUrls[0]) || pdfUrl
 
-    if (!imageUrl) {
+    if (!targetImageUrl) {
       console.error('Image URL is missing')
       return new Response(
         JSON.stringify({ success: false, error: 'Image URL is required' }),
@@ -42,11 +44,11 @@ Deno.serve(async (req) => {
       )
     }
 
-    console.log(`Analyzing image in ${mode} mode:`, imageUrl)
+    console.log(`Analyzing image in ${mode} mode:`, targetImageUrl)
 
     // Fetch the image
     console.log('Fetching image data...')
-    const imageData = await fetchImageAsBase64(imageUrl)
+    const imageData = await fetchImageAsBase64(targetImageUrl)
     if (!imageData) {
       console.error('Failed to fetch image data')
       throw new Error('Failed to fetch image data')
@@ -149,13 +151,28 @@ Then, create a concise set of staging instructions (around 150-200 words) that c
 ${basePrompt}`.trim()
   } else if (mode === 'interior') {
     return `You are an expert interior designer. Analyze this image in detail and describe the key elements of the interior design, including style, color palette, furniture, materials, and layout. Then, provide specific recommendations for how similar design principles could be applied to another space. ${basePrompt}`.trim()
+  } else if (mode === 'image' || mode === 'compare') {
+    return `You are an expert in product analysis and interior design. Analyze this ${mode === 'compare' ? 'set of product images' : 'product image'} in detail. 
+    
+Describe the following aspects:
+1. Product type, style, and overall aesthetic
+2. Material composition and quality assessment
+3. Design elements, patterns, and unique features
+4. Color palette and potential matching options
+5. Functionality and use cases
+6. Estimated price range
+7. Pros and cons
+
+${basePrompt}`.trim()
+  } else if (mode === 'pdf') {
+    return `You are an expert in analyzing product documentation. Review this PDF document and extract key information about the products described, including specifications, materials, design features, and pricing if available. Provide a structured analysis that would be useful for inventory management. ${basePrompt}`.trim()
   }
   
   // Default/general mode
   return `You are an expert in design analysis. Please analyze this image in detail and describe what you see, focusing on design elements, style, and notable features. ${basePrompt}`.trim()
 }
 
-// Helper function to fetch an image and convert it to base64 - FIXED to handle large images
+// Helper function to fetch an image and convert it to base64 - Fixed to handle large images
 async function fetchImageAsBase64(url: string): Promise<string | null> {
   try {
     console.log(`Fetching image from URL: ${url}`)
@@ -196,16 +213,12 @@ async function fetchImageAsBase64(url: string): Promise<string | null> {
 
 // Helper function to extract staging instructions from the analysis
 function extractInstructions(analysis: string, mode: string): string {
-  // For staging mode, try to extract just the instructions part
   if (mode === 'staging') {
-    // Look for instructions section or use the whole analysis if not found
     const instructionsMatch = analysis.match(/(?:Instructions|Staging Instructions|Here are the staging instructions):([\s\S]+)$/i)
     if (instructionsMatch && instructionsMatch[1]) {
       return instructionsMatch[1].trim()
     }
     
-    // If we can't find a specific instructions section, use the second half of the text
-    // which likely contains more actionable content
     const lines = analysis.split('\n')
     if (lines.length > 10) {
       return lines.slice(Math.floor(lines.length / 2)).join('\n').trim()
@@ -214,4 +227,3 @@ function extractInstructions(analysis: string, mode: string): string {
   
   return analysis
 }
-
