@@ -7,7 +7,6 @@ import PromptTemplates from './staging-instructions/PromptTemplates';
 import InstructionsInput from './staging-instructions/InstructionsInput';
 import InstructionSuggestions from './staging-instructions/InstructionSuggestions';
 import ReferenceImageUploader from './staging-instructions/ReferenceImageUploader';
-import ReferenceImageAnalyzer from './staging-instructions/ReferenceImageAnalyzer';
 
 interface StageInstructionsProps {
   onInstructionsChange: (instructions: string) => void;

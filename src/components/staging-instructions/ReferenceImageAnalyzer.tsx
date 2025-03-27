@@ -65,7 +65,7 @@ const ReferenceImageAnalyzer = ({
           variant="secondary"
           className="flex items-center gap-2"
           onClick={analyzeReferenceImage}
-          disabled={isAnalyzing}
+          disabled={isAnalyzing || !referenceImageUrl}
         >
           {isAnalyzing ? (
             <>

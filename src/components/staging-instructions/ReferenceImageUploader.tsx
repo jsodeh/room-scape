@@ -136,11 +136,13 @@ const ReferenceImageUploader = ({
               <span className="text-sm font-medium">Reference image will guide the styling</span>
             </div>
             
-            {/* Add the analyzer component */}
-            <ReferenceImageAnalyzer 
-              referenceImageUrl={referenceImageUrl} 
-              onInstructionsGenerated={handleInstructionsGenerated}
-            />
+            {/* Add the analyzer component - only if we have an uploaded URL */}
+            {referenceImageUrl && (
+              <ReferenceImageAnalyzer 
+                referenceImageUrl={referenceImageUrl} 
+                onInstructionsGenerated={handleInstructionsGenerated}
+              />
+            )}
           </div>
         </div>
       )}
