@@ -43,7 +43,10 @@ const ReferenceImageUploader = ({
       if (onReferenceImageUpload) {
         setIsUploading(true);
         try {
+          console.log('Uploading reference image');
           const uploadedUrl = await uploadImage(file, 'reference-images');
+          console.log('Uploaded reference image URL:', uploadedUrl);
+          
           if (uploadedUrl) {
             setReferenceImageUrl(uploadedUrl);
             onReferenceImageUpload(uploadedUrl);

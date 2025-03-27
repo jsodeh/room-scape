@@ -61,8 +61,10 @@ const StageInstructions = ({
   };
 
   const handleAnalysisInstructionsGenerated = (generatedInstructions: string) => {
+    console.log('Generated instructions from analysis:', generatedInstructions);
     setInstructions(generatedInstructions);
     onInstructionsChange(generatedInstructions);
+    toast.success('AI-generated instructions applied from reference image');
   };
 
   return (

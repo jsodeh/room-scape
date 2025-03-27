@@ -27,6 +27,8 @@ const ReferenceImageAnalyzer = ({
     setAnalysis(null);
     
     try {
+      console.log('Analyzing reference image:', referenceImageUrl);
+      
       const { data, error } = await supabase.functions.invoke('gemini-analyzer', {
         body: {
           imageUrl: referenceImageUrl,
@@ -35,8 +37,11 @@ const ReferenceImageAnalyzer = ({
       });
       
       if (error) {
+        console.error('Error invoking gemini-analyzer:', error);
         throw new Error(error.message);
       }
+      
+      console.log('Analysis result:', data);
       
       if (!data.success) {
         throw new Error(data.error || 'Failed to analyze image');
@@ -81,7 +86,7 @@ const ReferenceImageAnalyzer = ({
         </Button>
         <div className="text-xs text-muted-foreground flex items-center">
           <Lightbulb className="h-3.5 w-3.5 mr-1" />
-          AI will analyze the design style
+          <span>AI will analyze the design style</span>
         </div>
       </div>
       

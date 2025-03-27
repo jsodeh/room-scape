@@ -19,6 +19,7 @@ Deno.serve(async (req) => {
 
   // Check if API key is available
   if (!GEMINI_API_KEY) {
+    console.error('Gemini API key not found')
     return new Response(
       JSON.stringify({ success: false, error: 'Gemini API key not found' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -26,9 +27,15 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { imageUrl, prompt, mode } = await req.json() as AnalysisRequest
+    console.log('Request received:', req.url)
+    
+    const requestData = await req.json() as AnalysisRequest
+    console.log('Request data:', JSON.stringify(requestData))
+
+    const { imageUrl, prompt, mode } = requestData
 
     if (!imageUrl) {
+      console.error('Image URL is missing')
       return new Response(
         JSON.stringify({ success: false, error: 'Image URL is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -38,17 +45,23 @@ Deno.serve(async (req) => {
     console.log(`Analyzing image in ${mode} mode:`, imageUrl)
 
     // Fetch the image
+    console.log('Fetching image data...')
     const imageData = await fetchImageAsBase64(imageUrl)
     if (!imageData) {
+      console.error('Failed to fetch image data')
       throw new Error('Failed to fetch image data')
     }
+    console.log('Image data fetched successfully')
 
     // Build the Gemini API request
+    const geminiPrompt = buildPrompt(mode, prompt)
+    console.log('Using prompt:', geminiPrompt)
+    
     const geminiRequest = {
       contents: [
         {
           parts: [
-            { text: buildPrompt(mode, prompt) },
+            { text: geminiPrompt },
             {
               inlineData: {
                 mimeType: 'image/jpeg',
@@ -90,12 +103,16 @@ Deno.serve(async (req) => {
 
     // Extract the generated content
     const analysis = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    console.log('Analysis received:', analysis.substring(0, 100) + '...')
+    
+    const generatedInstructions = extractInstructions(analysis, mode)
+    console.log('Generated instructions:', generatedInstructions.substring(0, 100) + '...')
     
     return new Response(
       JSON.stringify({ 
         success: true, 
         analysis,
-        generatedInstructions: extractInstructions(analysis, mode)
+        generatedInstructions
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
@@ -140,13 +157,16 @@ ${basePrompt}`.trim()
 // Helper function to fetch an image and convert it to base64
 async function fetchImageAsBase64(url: string): Promise<string | null> {
   try {
+    console.log(`Fetching image from URL: ${url}`)
     const response = await fetch(url)
+    
     if (!response.ok) {
       console.error(`Failed to fetch image from ${url}: ${response.status}`)
       return null
     }
     
     const imageBuffer = await response.arrayBuffer()
+    console.log(`Image fetched, size: ${imageBuffer.byteLength} bytes`)
     return btoa(String.fromCharCode(...new Uint8Array(imageBuffer)))
   } catch (error) {
     console.error(`Error fetching image from ${url}:`, error)

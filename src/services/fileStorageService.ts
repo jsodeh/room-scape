@@ -19,19 +19,25 @@ const getBucketForFile = (file: File): string => {
 };
 
 // Upload an image or PDF to Supabase storage
-export const uploadImage = async (file: File, bucket?: string): Promise<string | null> => {
+export const uploadImage = async (file: File, folder?: string): Promise<string | null> => {
   try {
-    // If no bucket is specified, determine based on file type
-    const targetBucket = bucket || getBucketForFile(file);
+    // Use room-images bucket for all images
+    const targetBucket = 'room-images';
+    
+    // Use the folder parameter to organize images within the bucket
+    const targetFolder = folder || getBucketForFile(file);
     
     const fileName = generateUniqueFileName(file);
-    const filePath = `${targetBucket}/${fileName}`;
+    const filePath = `${targetFolder}/${fileName}`;
+    
+    console.log(`Uploading to bucket: ${targetBucket}, path: ${filePath}`);
     
     const { error, data } = await supabase.storage
       .from(targetBucket)
       .upload(filePath, file);
     
     if (error) {
+      console.error('Upload error:', error);
       throw error;
     }
 
@@ -40,18 +46,19 @@ export const uploadImage = async (file: File, bucket?: string): Promise<string |
       .from(targetBucket)
       .getPublicUrl(filePath);
     
+    console.log('Upload successful, URL:', publicUrl.publicUrl);
     return publicUrl.publicUrl;
   } catch (error: any) {
-    toast.error(`Error uploading file: ${error.message}`);
     console.error('Error uploading file:', error);
+    toast.error(`Error uploading file: ${error.message}`);
     return null;
   }
 };
 
 // Upload multiple files and return their URLs
-export const uploadMultipleImages = async (files: File[], bucket?: string): Promise<string[]> => {
+export const uploadMultipleImages = async (files: File[], folder?: string): Promise<string[]> => {
   try {
-    const uploadPromises = files.map(file => uploadImage(file, bucket));
+    const uploadPromises = files.map(file => uploadImage(file, folder));
     const results = await Promise.all(uploadPromises);
     return results.filter((url): url is string => url !== null);
   } catch (error: any) {
