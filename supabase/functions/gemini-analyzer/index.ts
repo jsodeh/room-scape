@@ -6,10 +6,9 @@ const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent"
 
 interface AnalysisRequest {
-  imageUrls?: string[];
-  pdfUrl?: string;
+  imageUrl: string;
   prompt?: string;
-  mode: 'image' | 'pdf' | 'compare';
+  mode: 'staging' | 'interior' | 'general';
 }
 
 Deno.serve(async (req) => {
@@ -27,37 +26,35 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { imageUrls, pdfUrl, prompt, mode } = await req.json() as AnalysisRequest
+    const { imageUrl, prompt, mode } = await req.json() as AnalysisRequest
 
-    if (mode === 'image' && (!imageUrls || imageUrls.length === 0)) {
+    if (!imageUrl) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Image URLs are required for image mode' }),
+        JSON.stringify({ success: false, error: 'Image URL is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    if (mode === 'pdf' && !pdfUrl) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'PDF URL is required for PDF mode' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    console.log(`Analyzing image in ${mode} mode:`, imageUrl)
 
-    if (mode === 'compare' && (!imageUrls || imageUrls.length < 2)) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'At least two image URLs are required for compare mode' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+    // Fetch the image
+    const imageData = await fetchImageAsBase64(imageUrl)
+    if (!imageData) {
+      throw new Error('Failed to fetch image data')
     }
-
-    console.log(`Processing request in ${mode} mode`)
 
     // Build the Gemini API request
-    const geminiRequest: any = {
+    const geminiRequest = {
       contents: [
         {
           parts: [
-            { text: buildPrompt(mode, prompt) }
+            { text: buildPrompt(mode, prompt) },
+            {
+              inlineData: {
+                mimeType: 'image/jpeg',
+                data: imageData
+              }
+            }
           ]
         }
       ],
@@ -67,29 +64,6 @@ Deno.serve(async (req) => {
         topP: 1,
         maxOutputTokens: 2048,
       }
-    }
-
-    // Add image parts
-    if (imageUrls && imageUrls.length > 0) {
-      for (const url of imageUrls) {
-        const imageData = await fetchImageAsBase64(url)
-        if (imageData) {
-          geminiRequest.contents[0].parts.push({
-            inlineData: {
-              mimeType: 'image/jpeg',
-              data: imageData
-            }
-          })
-        }
-      }
-    }
-
-    // For PDF mode, we treat it as an image for now since direct PDF parsing 
-    // requires additional processing
-    if (pdfUrl && mode === 'pdf') {
-      // In a real implementation, you'd convert PDF pages to images
-      // For now, we'll send the URL to Gemini to see if it can handle it
-      geminiRequest.contents[0].parts[0].text += `\nAnalyze the PDF at this URL: ${pdfUrl}`
     }
 
     console.log("Sending request to Gemini API")
@@ -109,27 +83,24 @@ Deno.serve(async (req) => {
     if (!response.ok) {
       console.error("Gemini API error:", data)
       return new Response(
-        JSON.stringify({ success: false, error: data.error?.message || 'Failed to process with Gemini API' }),
+        JSON.stringify({ success: false, error: data.error?.message || 'Failed to analyze image with Gemini API' }),
         { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     // Extract the generated content
-    const result = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-    
-    // Parse structured data from the result (if available)
-    const parsedData = tryParseStructuredData(result)
+    const analysis = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
     
     return new Response(
       JSON.stringify({ 
         success: true, 
-        analysis: result,
-        structuredData: parsedData
+        analysis,
+        generatedInstructions: extractInstructions(analysis, mode)
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
-    console.error('Error processing request:', error)
+    console.error('Error analyzing image:', error)
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -137,19 +108,33 @@ Deno.serve(async (req) => {
   }
 })
 
-// Helper function to build the appropriate prompt
+// Helper function to build the appropriate prompt based on mode
 function buildPrompt(mode: string, userPrompt?: string): string {
   const basePrompt = userPrompt || ''
   
-  if (mode === 'image') {
-    return `You are a product analysis expert. Analyze this product image and extract as much information as possible including: name, category, description, dimensions, materials, colors, and any other relevant details. Return the information in a clear structured format. ${basePrompt}`.trim()
-  } else if (mode === 'pdf') {
-    return `You are a document analysis expert. Extract and summarize the key product information from this PDF including: product names, categories, descriptions, specifications, pricing if available, and any other relevant details. Format the information in a structured way. ${basePrompt}`.trim()
-  } else if (mode === 'compare') {
-    return `You are a product comparison expert. Compare these products and identify the key similarities and differences. Include details like: design, features, materials, dimensions, and any other notable aspects. Provide a structured comparison. ${basePrompt}`.trim()
+  if (mode === 'staging') {
+    return `You are an expert interior designer specializing in virtual staging. 
+    
+Analyze this reference image in detail and generate specific staging instructions that would help recreate a similar style and atmosphere in another room. 
+
+Your analysis should include:
+1. Overall style and design aesthetic (e.g., minimalist, traditional, industrial, etc.)
+2. Color scheme and palette
+3. Key furniture pieces and their characteristics
+4. Decor elements and accessories
+5. Lighting considerations
+6. Materials and textures
+7. Spatial arrangement and layout principles
+
+Then, create a concise set of staging instructions (around 150-200 words) that captures the essence of this design, written in second person ("Stage this room with..."). Focus on actionable tips that would help recreate this style.
+
+${basePrompt}`.trim()
+  } else if (mode === 'interior') {
+    return `You are an expert interior designer. Analyze this image in detail and describe the key elements of the interior design, including style, color palette, furniture, materials, and layout. Then, provide specific recommendations for how similar design principles could be applied to another space. ${basePrompt}`.trim()
   }
   
-  return basePrompt
+  // Default/general mode
+  return `You are an expert in design analysis. Please analyze this image in detail and describe what you see, focusing on design elements, style, and notable features. ${basePrompt}`.trim()
 }
 
 // Helper function to fetch an image and convert it to base64
@@ -169,31 +154,23 @@ async function fetchImageAsBase64(url: string): Promise<string | null> {
   }
 }
 
-// Helper function to try parsing structured data from the Gemini response
-function tryParseStructuredData(text: string): any {
-  try {
-    // Look for JSON blocks in the response
-    const jsonMatches = text.match(/```json\n([\s\S]*?)\n```/)
-    if (jsonMatches && jsonMatches[1]) {
-      return JSON.parse(jsonMatches[1])
+// Helper function to extract staging instructions from the analysis
+function extractInstructions(analysis: string, mode: string): string {
+  // For staging mode, try to extract just the instructions part
+  if (mode === 'staging') {
+    // Look for instructions section or use the whole analysis if not found
+    const instructionsMatch = analysis.match(/(?:Instructions|Staging Instructions|Here are the staging instructions):([\s\S]+)$/i)
+    if (instructionsMatch && instructionsMatch[1]) {
+      return instructionsMatch[1].trim()
     }
     
-    // If we can't find JSON blocks, try to structure the data ourselves
-    const lines = text.split('\n')
-    const structuredData: Record<string, string> = {}
-    
-    for (const line of lines) {
-      // Look for "key: value" or "key - value" patterns
-      const match = line.match(/^([^:]*?)[:|-]\s*(.*)$/)
-      if (match && match[1] && match[2]) {
-        const key = match[1].trim().toLowerCase().replace(/\s+/g, '_')
-        structuredData[key] = match[2].trim()
-      }
+    // If we can't find a specific instructions section, use the second half of the text
+    // which likely contains more actionable content
+    const lines = analysis.split('\n')
+    if (lines.length > 10) {
+      return lines.slice(Math.floor(lines.length / 2)).join('\n').trim()
     }
-    
-    return Object.keys(structuredData).length > 0 ? structuredData : null
-  } catch (error) {
-    console.error('Error parsing structured data:', error)
-    return null
   }
+  
+  return analysis
 }

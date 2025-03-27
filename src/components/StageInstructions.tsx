@@ -60,6 +60,11 @@ const StageInstructions = ({
     toast.success('Template applied');
   };
 
+  const handleAnalysisInstructionsGenerated = (generatedInstructions: string) => {
+    setInstructions(generatedInstructions);
+    onInstructionsChange(generatedInstructions);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Style Preferences Section */}
@@ -91,6 +96,7 @@ const StageInstructions = ({
       <ReferenceImageUploader 
         onReferenceImageChange={onReferenceImageChange}
         onReferenceImageUpload={onReferenceImageUpload}
+        onAnalysisInstructionsGenerated={handleAnalysisInstructionsGenerated}
       />
     </div>
   );

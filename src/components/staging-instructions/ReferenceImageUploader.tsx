@@ -5,18 +5,22 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { uploadImage } from '@/services/fileStorageService';
+import ReferenceImageAnalyzer from './ReferenceImageAnalyzer';
 
 interface ReferenceImageUploaderProps {
   onReferenceImageChange: (file: File | null) => void;
   onReferenceImageUpload?: (url: string | null) => void;
+  onAnalysisInstructionsGenerated?: (instructions: string) => void;
 }
 
 const ReferenceImageUploader = ({ 
   onReferenceImageChange, 
-  onReferenceImageUpload 
+  onReferenceImageUpload,
+  onAnalysisInstructionsGenerated
 }: ReferenceImageUploaderProps) => {
   const [referenceImage, setReferenceImage] = useState<File | null>(null);
   const [referenceImagePreview, setReferenceImagePreview] = useState<string | null>(null);
+  const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
   const handleReferenceImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -41,6 +45,7 @@ const ReferenceImageUploader = ({
         try {
           const uploadedUrl = await uploadImage(file, 'reference-images');
           if (uploadedUrl) {
+            setReferenceImageUrl(uploadedUrl);
             onReferenceImageUpload(uploadedUrl);
             toast.success('Reference image uploaded');
           } else {
@@ -65,9 +70,16 @@ const ReferenceImageUploader = ({
     
     setReferenceImage(null);
     setReferenceImagePreview(null);
+    setReferenceImageUrl(null);
     onReferenceImageChange(null);
     if (onReferenceImageUpload) {
       onReferenceImageUpload(null);
+    }
+  };
+
+  const handleInstructionsGenerated = (instructions: string) => {
+    if (onAnalysisInstructionsGenerated) {
+      onAnalysisInstructionsGenerated(instructions);
     }
   };
 
@@ -123,6 +135,12 @@ const ReferenceImageUploader = ({
               <Sparkles className="h-4 w-4 text-amber-500" />
               <span className="text-sm font-medium">Reference image will guide the styling</span>
             </div>
+            
+            {/* Add the analyzer component */}
+            <ReferenceImageAnalyzer 
+              referenceImageUrl={referenceImageUrl} 
+              onInstructionsGenerated={handleInstructionsGenerated}
+            />
           </div>
         </div>
       )}
