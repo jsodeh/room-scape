@@ -62,13 +62,22 @@ export const generateStagedImages = async (
     console.log('- Instructions length:', instructions.length);
     console.log('- Reference image URL:', referenceImageUrl || 'none');
     
+    // Store the reference image in the project for future use,
+    // but don't pass it to the staging API call
+    if (referenceImageUrl) {
+      await supabase
+        .from('staging_projects')
+        .update({ reference_image: referenceImageUrl })
+        .eq('id', projectId);
+    }
+    
     const { data, error } = await supabase.functions
       .invoke('generate-staged-room', {
         body: {
           projectId,
           roomImageUrl,
-          instructions,
-          referenceImageUrl
+          instructions
+          // No longer passing referenceImageUrl here
         }
       });
     

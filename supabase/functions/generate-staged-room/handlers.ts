@@ -93,13 +93,13 @@ export async function handleStagingRequest(req: Request) {
       console.log("Room image fetched successfully, size:", roomImageData.byteLength);
 
       // Create prompt based on inputs
-      let prompt = createPrompt(instructions, referenceImageUrl);
+      let prompt = createPrompt(instructions, null); // Don't pass referenceImageUrl here
       console.log("Created prompt:", prompt);
 
       // Process and generate the staged room
       // Make sure that roomImageData is passed as the primary image
       console.log("Starting image generation processing...");
-      const stagedImages = await generateStagedRoom(roomImageData, prompt, referenceImageUrl, projectId);
+      const stagedImages = await generateStagedRoom(roomImageData, prompt, null, projectId);
       console.log("Image generation complete, received images:", stagedImages.length);
 
       // Update the project with generated images

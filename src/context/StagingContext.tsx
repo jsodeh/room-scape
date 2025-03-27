@@ -1,4 +1,3 @@
-
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { generateStagedImages } from '@/services/stagingService';
@@ -48,7 +47,6 @@ export function StagingProvider({ children }: { children: ReactNode }) {
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [pollingInterval, setPollingInterval] = useState<number | null>(null);
 
-  // Clean up polling interval on unmount
   useEffect(() => {
     return () => {
       if (pollingInterval) {
@@ -60,7 +58,6 @@ export function StagingProvider({ children }: { children: ReactNode }) {
   const handleImagesSelected = (files: File[]) => {
     setUploadedImages(files);
     
-    // Create preview URLs for original images
     const imagePreviews = files.map(file => URL.createObjectURL(file));
     setOriginalImagePreviews(imagePreviews);
   };
@@ -105,8 +102,7 @@ export function StagingProvider({ children }: { children: ReactNode }) {
       await generateStagedImages(
         currentProjectId,
         originalImageUrls[0],
-        finalInstructions,
-        referenceImageUrl || undefined
+        finalInstructions
       );
       
       toast.info('Regenerating staged room. This may take a few minutes.');
@@ -118,7 +114,6 @@ export function StagingProvider({ children }: { children: ReactNode }) {
   };
 
   const resetState = () => {
-    // Clean up object URLs to prevent memory leaks
     originalImagePreviews.forEach(url => URL.revokeObjectURL(url));
     
     setUploadedImages([]);
@@ -132,7 +127,6 @@ export function StagingProvider({ children }: { children: ReactNode }) {
     setStagedImageResults([]);
     setCurrentProjectId(null);
     
-    // Clear any polling interval
     if (pollingInterval) {
       clearInterval(pollingInterval);
       setPollingInterval(null);

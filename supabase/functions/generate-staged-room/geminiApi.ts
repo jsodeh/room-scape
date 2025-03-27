@@ -13,7 +13,6 @@ const GEMINI_MODEL = "gemini-2.0-flash-exp-image-generation"; // Using experimen
 export async function generateStagedRoomWithGemini(
   roomImageData: ArrayBuffer,
   prompt: string,
-  referenceImageUrl: string | undefined,
   projectId: string
 ): Promise<string[]> {
   try {
@@ -64,30 +63,6 @@ The staged room should look professional and maintain the original room structur
         response_mime_type: "text/plain"
       }
     };
-    
-    // Add reference image if provided - FOR STYLE GUIDANCE ONLY
-    if (referenceImageUrl) {
-      try {
-        console.log("Adding reference image to Gemini request as style guidance only");
-        const referenceImageResponse = await fetch(referenceImageUrl);
-        const referenceImageBuffer = await referenceImageResponse.arrayBuffer();
-        const referenceBase64 = arrayBufferToBase64(referenceImageBuffer);
-        
-        // Add reference image as a separate part AFTER the primary room image
-        // This ordering ensures the model understands which is the primary image to transform
-        requestBody.contents[0].parts.push({
-          inline_data: {
-            mime_type: "image/jpeg",
-            data: referenceBase64
-          }
-        });
-        
-        // Update prompt to clarify how the reference image should be used
-        requestBody.contents[0].parts[0].text += "\nUse the provided reference image ONLY as a style guide for furniture and decor choices. Transform the FIRST image (the room) based on this style guidance.";
-      } catch (refError) {
-        console.log("Could not load reference image:", refError);
-      }
-    }
     
     console.log("Sending request to Gemini API");
     

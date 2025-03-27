@@ -74,12 +74,11 @@ export function useStagingSubmission({
       // Use the first image for staging (for now we only support one image)
       const roomImageUrl = originalImageUrls[0];
       
-      // Generate staged images
+      // Generate staged images - not passing the reference image URL
       await generateStagedImages(
         project.id,
         roomImageUrl,
-        finalInstructions,
-        referenceImageUrl || undefined
+        finalInstructions
       );
       
       toast.success('Your staging request is being processed. This may take a few minutes.');

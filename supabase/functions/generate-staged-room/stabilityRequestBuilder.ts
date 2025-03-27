@@ -4,8 +4,7 @@ import { fetchImage } from "./imageProcessor.ts";
 // Prepare the request data for Stability API
 export async function prepareStabilityRequest(
   roomImageData: ArrayBuffer,
-  prompt: string,
-  referenceImageUrl?: string
+  prompt: string
 ): Promise<FormData> {
   // Log image size which can help diagnose timeouts
   const imageSizeMB = roomImageData.byteLength / (1024 * 1024);
@@ -44,31 +43,6 @@ export async function prepareStabilityRequest(
   console.log(`- Seed: ${formData.get('seed')}`);
   console.log(`- CFG Scale: ${formData.get('cfg_scale')}`);
   console.log(`- Samples: ${formData.get('samples')}`);
-  
-  // Reference image if provided - only include if under size limit
-  // The reference image should only influence the style, not be the main image to transform
-  if (referenceImageUrl) {
-    try {
-      const refImageData = await fetchImage(referenceImageUrl, "reference");
-      
-      // Check reference image size too
-      const refSizeMB = refImageData.byteLength / (1024 * 1024);
-      console.log(`Reference image size: ${refSizeMB.toFixed(2)}MB`);
-      
-      if (refSizeMB > 4) {
-        console.warn(`Reference image is too large (${refSizeMB.toFixed(2)}MB). Skipping it.`);
-      } else {
-        const refImageBlob = new Blob([new Uint8Array(refImageData)], { type: 'image/jpeg' });
-        
-        // Use the correct parameter name for reference image
-        // This ensures it's used as style reference, not as the main image
-        formData.append('reference_image', refImageBlob, 'reference_image.jpg');
-        console.log("Added reference image to the request as style reference only");
-      }
-    } catch (refError) {
-      console.error("Error processing reference image, continuing without it:", refError);
-    }
-  }
   
   // Log details about the request for better debugging
   console.log("Preparing request to Stability AI v2beta API");

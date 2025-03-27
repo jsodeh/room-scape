@@ -1,97 +1,54 @@
 
-export class StabilityApiClient {
-  private apiKey: string;
-  private baseUrl = "https://api.stability.ai";
-  private endpoint = "/v2beta/stable-image/edit/search-and-replace";
+import { fetchImage } from "./imageProcessor.ts";
+import { prepareStabilityRequest } from "./stabilityRequestBuilder.ts";
+import { processStabilityResponse } from "./stabilityResponseHandler.ts";
+import { updateProjectStatus } from "./projectManager.ts";
+import { stabilityApiKey } from "./supabaseClient.ts";
+
+// API endpoint for Stability Search and Replace
+const STABILITY_API_URL = "https://api.stability.ai/v2beta/searches/replace";
+
+/**
+ * Generate a staged room using Stability AI's search-and-replace endpoint
+ */
+export async function generateStagedRoomWithStability(
+  roomImageData: ArrayBuffer,
+  prompt: string,
+  projectId: string
+): Promise<string[]> {
+  console.log("Starting Stability AI request for project:", projectId);
   
-  constructor(apiKey: string) {
-    this.apiKey = apiKey;
-  }
-  
-  async generateImage(formData: FormData): Promise<any> {
-    console.log("Sending request to Stability API now...");
+  try {
+    // Update project status to processing
+    await updateProjectStatus(projectId, "processing", "Generating staged room with Stability AI");
     
-    // Add timeout handling with AbortController
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      console.log("Request timeout reached, aborting");
-      controller.abort();
-    }, 30000); // 30 second timeout for large images
+    // Prepare the request with image data and parameters
+    const formData = await prepareStabilityRequest(roomImageData, prompt);
     
-    try {
-      // Make request to Stability AI v2beta API with correct Accept header
-      const response = await fetch(
-        `${this.baseUrl}${this.endpoint}`,
-        {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${this.apiKey}`,
-            // Accept header set per Stability API docs
-            "Accept": "application/json"
-          },
-          body: formData,
-          signal: controller.signal
-        }
-      );
-      
-      clearTimeout(timeoutId);
-      console.log(`Stability API response status: ${response.status}`);
-      
-      // Enhanced error logging with full details
-      if (!response.ok) {
-        const responseText = await response.text();
-        console.error(`Stability API error response (${response.status}):`, responseText);
-        console.error(`Request URL: ${this.baseUrl}${this.endpoint}`);
-        
-        let errorMessage = `Stability API error (status ${response.status})`;
-        let errorDetails = "";
-        
-        try {
-          // Try to parse as JSON for more specific error message
-          const errorJson = JSON.parse(responseText);
-          if (errorJson.message) {
-            errorDetails = errorJson.message;
-          } else if (errorJson.errors && errorJson.errors.length > 0) {
-            errorDetails = errorJson.errors.join(', ');
-          } else {
-            errorDetails = responseText.substring(0, 200);
-          }
-        } catch (e) {
-          // If not valid JSON, use text
-          errorDetails = responseText.substring(0, 200);
-        }
-        
-        errorMessage += `: ${errorDetails}`;
-        console.error(errorMessage);
-        
-        // Specific messaging for common error codes
-        if (response.status === 401) {
-          throw new Error("Authentication failed: Invalid Stability API key. Please check your API key in Supabase secrets.");
-        } else if (response.status === 400) {
-          throw new Error(`Bad request: ${errorDetails}. Check image format and prompt.`);
-        } else if (response.status === 429) {
-          throw new Error("Rate limit exceeded. Please try again later.");
-        } else {
-          throw new Error(errorMessage);
-        }
-      }
-      
-      console.log("Processing successful response from Stability API");
-      
-      // Parse the response and log structure for debugging
-      const result = await response.json();
-      console.log("Stability API response full structure:", JSON.stringify(result, null, 2));
-      console.log("Top level keys in response:", Object.keys(result));
-      
-      return result;
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-      console.error("Fetch error:", fetchError.name, fetchError.message);
-      
-      if (fetchError.name === 'AbortError') {
-        throw new Error("Stability API request timed out. The image may be too large or complex. Please try again with a smaller image or simplify your request.");
-      }
-      throw fetchError;
+    // Send request to Stability AI
+    console.log("Sending request to Stability API...");
+    const response = await fetch(STABILITY_API_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${stabilityApiKey}`,
+        // Don't set Content-Type here as it's automatically set with FormData
+      },
+      body: formData
+    });
+    
+    // Process the response from Stability API
+    console.log(`Response status: ${response.status} ${response.statusText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Stability API error response:", errorText);
+      throw new Error(`Stability API error (status ${response.status}): ${errorText}`);
     }
+    
+    // Extract and process the generated images
+    return await processStabilityResponse(response, projectId);
+  } catch (error) {
+    console.error("Error generating staged room with Stability AI:", error);
+    await updateProjectStatus(projectId, "failed", `Stability AI error: ${error.message}`);
+    throw error;
   }
 }
