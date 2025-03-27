@@ -1,18 +1,20 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, ChevronLeft, ChevronRight, Maximize2, RefreshCw } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight, Maximize2, Pencil } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
+import EditInstructionsInput from './EditInstructionsInput';
 
 interface ResultsDisplayProps {
   originalImages: string[];
   stagedImages: string[];
-  onRegenerate?: () => void;
+  onEdit?: (initialInstructions?: string) => void;
+  isEditMode?: boolean;
   onReset: () => void;
 }
 
-const ResultsDisplay = ({ originalImages, stagedImages, onRegenerate, onReset }: ResultsDisplayProps) => {
+const ResultsDisplay = ({ originalImages, stagedImages, onEdit, isEditMode, onReset }: ResultsDisplayProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showOriginal, setShowOriginal] = useState(false);
 
@@ -96,10 +98,10 @@ const ResultsDisplay = ({ originalImages, stagedImages, onRegenerate, onReset }:
               Start Over
             </Button>
             <div className="flex gap-2">
-              {onRegenerate && (
-                <Button variant="outline" className="gap-2" onClick={onRegenerate}>
-                  <RefreshCw className="h-4 w-4" />
-                  Regenerate
+              {onEdit && !isEditMode && (
+                <Button variant="outline" className="gap-2" onClick={() => onEdit()}>
+                  <Pencil className="h-4 w-4" />
+                  Edit
                 </Button>
               )}
               <Button variant="outline" className="gap-2" onClick={openFullscreen}>

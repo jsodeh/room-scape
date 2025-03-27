@@ -1,3 +1,4 @@
+
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { generateStagedImages } from '@/services/stagingService';
@@ -5,6 +6,8 @@ import { generateStagedImages } from '@/services/stagingService';
 interface StagingContextType {
   uploadedImages: File[];
   stagingInstructions: string;
+  editInstructions: string;
+  isEditMode: boolean;
   referenceImage: File | null;
   referenceImageUrl: string | null;
   isProcessing: boolean;
@@ -15,6 +18,8 @@ interface StagingContextType {
   currentProjectId: string | null;
   setUploadedImages: (files: File[]) => void;
   setStagingInstructions: (instructions: string) => void;
+  setEditInstructions: (instructions: string) => void;
+  setIsEditMode: (isEdit: boolean) => void;
   setReferenceImage: (file: File | null) => void;
   setReferenceImageUrl: (url: string | null) => void;
   setOriginalImagePreviews: (previews: string[]) => void;
@@ -26,9 +31,11 @@ interface StagingContextType {
   handleImagesSelected: (files: File[]) => void;
   handleImageUrlsReady: (urls: string[]) => void;
   handleInstructionsChange: (instructions: string) => void;
+  handleEditInstructionsChange: (instructions: string) => void;
   handleReferenceImageChange: (file: File | null) => void;
   handleReferenceImageUpload: (url: string | null) => void;
-  handleRegenerate: () => void;
+  handleEdit: (initialInstructions?: string) => void;
+  handleEditSubmit: () => void;
   resetState: () => void;
 }
 
@@ -37,6 +44,8 @@ const StagingContext = createContext<StagingContextType | undefined>(undefined);
 export function StagingProvider({ children }: { children: ReactNode }) {
   const [uploadedImages, setUploadedImages] = useState<File[]>([]);
   const [stagingInstructions, setStagingInstructions] = useState('');
+  const [editInstructions, setEditInstructions] = useState('');
+  const [isEditMode, setIsEditMode] = useState(false);
   const [referenceImage, setReferenceImage] = useState<File | null>(null);
   const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -70,6 +79,10 @@ export function StagingProvider({ children }: { children: ReactNode }) {
     setStagingInstructions(instructions);
   };
 
+  const handleEditInstructionsChange = (instructions: string) => {
+    setEditInstructions(instructions);
+  };
+
   const handleReferenceImageChange = (file: File | null) => {
     setReferenceImage(file);
   };
@@ -86,9 +99,23 @@ export function StagingProvider({ children }: { children: ReactNode }) {
     return finalInstructions;
   };
 
-  const handleRegenerate = async () => {
-    if (!currentProjectId) {
-      toast.error('Cannot regenerate without an active project');
+  const handleEdit = (initialInstructions?: string) => {
+    if (initialInstructions) {
+      setEditInstructions(initialInstructions);
+    } else {
+      setEditInstructions('');
+    }
+    setIsEditMode(true);
+  };
+
+  const handleEditSubmit = async () => {
+    if (!currentProjectId || !stagedImageResults.length) {
+      toast.error('Cannot edit without an active project and staged image');
+      return;
+    }
+    
+    if (!editInstructions.trim()) {
+      toast.error('Please add editing instructions');
       return;
     }
     
@@ -96,20 +123,22 @@ export function StagingProvider({ children }: { children: ReactNode }) {
     setIsComplete(false);
     
     try {
-      const finalInstructions = createFinalInstructions();
+      // Here we use the currently staged image URL instead of original image
+      const stagedImageUrl = stagedImageResults[0];
       
-      console.log('Regenerating staged images for project:', currentProjectId);
+      console.log('Editing staged image with instructions:', editInstructions);
       await generateStagedImages(
         currentProjectId,
-        originalImageUrls[0],
-        finalInstructions
+        stagedImageUrl, // Use staged image as source instead of original
+        editInstructions
       );
       
-      toast.info('Regenerating staged room. This may take a few minutes.');
+      setIsEditMode(false);
+      toast.info('Applying edits to staged room. This may take a few minutes.');
     } catch (error) {
-      console.error('Error regenerating staged room:', error);
+      console.error('Error editing staged room:', error);
       setIsProcessing(false);
-      toast.error('An error occurred while regenerating. Please try again.');
+      toast.error('An error occurred while editing. Please try again.');
     }
   };
 
@@ -118,6 +147,8 @@ export function StagingProvider({ children }: { children: ReactNode }) {
     
     setUploadedImages([]);
     setStagingInstructions('');
+    setEditInstructions('');
+    setIsEditMode(false);
     setReferenceImage(null);
     setReferenceImageUrl(null);
     setIsProcessing(false);
@@ -138,6 +169,8 @@ export function StagingProvider({ children }: { children: ReactNode }) {
       value={{
         uploadedImages,
         stagingInstructions,
+        editInstructions,
+        isEditMode,
         referenceImage,
         referenceImageUrl,
         isProcessing,
@@ -148,6 +181,8 @@ export function StagingProvider({ children }: { children: ReactNode }) {
         currentProjectId,
         setUploadedImages,
         setStagingInstructions,
+        setEditInstructions,
+        setIsEditMode,
         setReferenceImage,
         setReferenceImageUrl,
         setOriginalImagePreviews,
@@ -159,9 +194,11 @@ export function StagingProvider({ children }: { children: ReactNode }) {
         handleImagesSelected,
         handleImageUrlsReady,
         handleInstructionsChange,
+        handleEditInstructionsChange,
         handleReferenceImageChange,
         handleReferenceImageUpload,
-        handleRegenerate,
+        handleEdit,
+        handleEditSubmit,
         resetState
       }}
     >

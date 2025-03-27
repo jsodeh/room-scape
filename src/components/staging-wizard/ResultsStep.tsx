@@ -1,6 +1,7 @@
 
 import { useStagingContext } from '@/context/StagingContext';
 import ResultsDisplay from '@/components/ResultsDisplay';
+import EditInstructionsInput from '@/components/EditInstructionsInput';
 import { Loader2 } from 'lucide-react';
 
 const ResultsStep = () => {
@@ -9,7 +10,11 @@ const ResultsStep = () => {
     stagedImageResults, 
     isProcessing, 
     isComplete,
-    handleRegenerate,
+    isEditMode,
+    editInstructions,
+    handleEdit,
+    handleEditInstructionsChange,
+    handleEditSubmit,
     resetState
   } = useStagingContext();
 
@@ -17,7 +22,9 @@ const ResultsStep = () => {
     return (
       <div className="flex flex-col items-center justify-center py-12 space-y-4">
         <Loader2 className="h-12 w-12 text-primary animate-spin" />
-        <p className="text-lg font-medium">Generating your staged room...</p>
+        <p className="text-lg font-medium">
+          {isEditMode ? 'Applying edits to your staged room...' : 'Generating your staged room...'}
+        </p>
         <p className="text-sm text-muted-foreground">This may take a few minutes.</p>
       </div>
     );
@@ -34,13 +41,23 @@ const ResultsStep = () => {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in space-y-4">
       <ResultsDisplay 
         originalImages={originalImageUrls}
         stagedImages={stagedImageResults}
-        onRegenerate={handleRegenerate}
+        onEdit={handleEdit}
+        isEditMode={isEditMode}
         onReset={resetState}
       />
+
+      {isEditMode && (
+        <EditInstructionsInput 
+          value={editInstructions}
+          onChange={handleEditInstructionsChange}
+          onSubmit={handleEditSubmit}
+          isProcessing={isProcessing}
+        />
+      )}
     </div>
   );
 };

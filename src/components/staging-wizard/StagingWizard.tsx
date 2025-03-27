@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { TabsWrapper, TabsContent, TabsList, TabsTrigger } from '@/components/TabsWrapper';
-import { Upload, MessageSquare, Image } from 'lucide-react';
+import { Upload, MessageSquare, Image, Edit } from 'lucide-react';
 import UploadStep from './UploadStep';
 import InstructionsStep from './InstructionsStep';
 import ResultsStep from './ResultsStep';
@@ -19,6 +19,7 @@ const StagingWizard = ({ onSubmit }: StagingWizardProps) => {
     stagingInstructions,
     isProcessing,
     isComplete,
+    isEditMode,
     stagedImageResults
   } = useStagingContext();
 
@@ -84,12 +85,20 @@ const StagingWizard = ({ onSubmit }: StagingWizardProps) => {
         <TabsTrigger 
           value="results" 
           className="data-[state=active]:shadow-sm relative"
-          disabled={!isStepComplete('upload') || isProcessing}
+          disabled={!isStepComplete('upload') || (isProcessing && !isComplete)}
         >
           <span className="flex items-center gap-2">
-            <Image className="h-4 w-4" />
-            <span className="hidden sm:inline">View Results</span>
-            <span className="sm:hidden">Results</span>
+            {isEditMode ? (
+              <Edit className="h-4 w-4" />
+            ) : (
+              <Image className="h-4 w-4" />
+            )}
+            <span className="hidden sm:inline">
+              {isEditMode ? "Edit Results" : "View Results"}
+            </span>
+            <span className="sm:hidden">
+              {isEditMode ? "Edit" : "Results"}
+            </span>
           </span>
           {isStepComplete('results') && (
             <span className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full" />
