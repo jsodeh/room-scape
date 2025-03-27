@@ -1,11 +1,10 @@
 
 import { useState, useEffect } from 'react';
 import { TabsWrapper, TabsContent, TabsList, TabsTrigger } from '@/components/TabsWrapper';
-import { Upload, MessageSquare, Image, PencilIcon } from 'lucide-react';
+import { Upload, MessageSquare, Image } from 'lucide-react';
 import UploadStep from './UploadStep';
 import InstructionsStep from './InstructionsStep';
 import ResultsStep from './ResultsStep';
-import EditingStep from './EditingStep';
 import { useStagingContext } from '@/context/StagingContext';
 
 interface StagingWizardProps {
@@ -20,8 +19,7 @@ const StagingWizard = ({ onSubmit }: StagingWizardProps) => {
     stagingInstructions,
     isProcessing,
     isComplete,
-    stagedImageResults,
-    isEditing
+    stagedImageResults
   } = useStagingContext();
 
   const isStepComplete = (step: string) => {
@@ -30,8 +28,6 @@ const StagingWizard = ({ onSubmit }: StagingWizardProps) => {
         return uploadedImages.length > 0 && originalImageUrls.length > 0;
       case 'instructions':
         // Instructions are optional
-        return true;
-      case 'editing':
         return true;
       case 'results':
         return isComplete && stagedImageResults.length > 0;
@@ -45,28 +41,19 @@ const StagingWizard = ({ onSubmit }: StagingWizardProps) => {
       setActiveTab('instructions');
     } else if (activeTab === 'instructions') {
       setActiveTab('results');
-    } else if (activeTab === 'editing') {
-      setActiveTab('results');
     }
   };
 
   // Auto-navigate to results when processing completes
   useEffect(() => {
-    if (isComplete && activeTab !== 'results' && !isEditing) {
+    if (isComplete && activeTab !== 'results') {
       setActiveTab('results');
     }
-  }, [isComplete, activeTab, isEditing]);
-
-  // Auto-navigate to editing when editing is activated
-  useEffect(() => {
-    if (isEditing) {
-      setActiveTab('editing');
-    }
-  }, [isEditing]);
+  }, [isComplete, activeTab]);
 
   return (
     <TabsWrapper value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid grid-cols-4 mb-8">
+      <TabsList className="grid grid-cols-3 mb-8">
         <TabsTrigger 
           value="upload" 
           className="data-[state=active]:shadow-sm relative"
@@ -95,17 +82,6 @@ const StagingWizard = ({ onSubmit }: StagingWizardProps) => {
           )}
         </TabsTrigger>
         <TabsTrigger 
-          value="editing" 
-          className="data-[state=active]:shadow-sm relative"
-          disabled={!isComplete || !stagedImageResults.length}
-        >
-          <span className="flex items-center gap-2">
-            <PencilIcon className="h-4 w-4" />
-            <span className="hidden sm:inline">Edit Results</span>
-            <span className="sm:hidden">Edit</span>
-          </span>
-        </TabsTrigger>
-        <TabsTrigger 
           value="results" 
           className="data-[state=active]:shadow-sm relative"
           disabled={!isStepComplete('upload') || isProcessing}
@@ -128,10 +104,6 @@ const StagingWizard = ({ onSubmit }: StagingWizardProps) => {
         
         <TabsContent value="instructions" className="mt-0">
           <InstructionsStep onSubmit={onSubmit} isProcessing={isProcessing} />
-        </TabsContent>
-        
-        <TabsContent value="editing" className="mt-0">
-          <EditingStep />
         </TabsContent>
         
         <TabsContent value="results" className="mt-0">

@@ -1,4 +1,3 @@
-
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { generateStagedImages } from '@/services/stagingService';
@@ -10,7 +9,6 @@ interface StagingContextType {
   referenceImageUrl: string | null;
   isProcessing: boolean;
   isComplete: boolean;
-  isEditing: boolean;
   originalImagePreviews: string[];
   originalImageUrls: string[];
   stagedImageResults: string[];
@@ -24,14 +22,13 @@ interface StagingContextType {
   setStagedImageResults: (results: string[]) => void;
   setIsProcessing: (isProcessing: boolean) => void;
   setIsComplete: (isComplete: boolean) => void;
-  setIsEditing: (isEditing: boolean) => void;
   setCurrentProjectId: (id: string | null) => void;
   handleImagesSelected: (files: File[]) => void;
   handleImageUrlsReady: (urls: string[]) => void;
   handleInstructionsChange: (instructions: string) => void;
   handleReferenceImageChange: (file: File | null) => void;
   handleReferenceImageUpload: (url: string | null) => void;
-  handleEdit: (instructions: string) => void;
+  handleRegenerate: () => void;
   resetState: () => void;
 }
 
@@ -44,7 +41,6 @@ export function StagingProvider({ children }: { children: ReactNode }) {
   const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
   const [originalImagePreviews, setOriginalImagePreviews] = useState<string[]>([]);
   const [originalImageUrls, setOriginalImageUrls] = useState<string[]>([]);
   const [stagedImageResults, setStagedImageResults] = useState<string[]>([]);
@@ -82,21 +78,17 @@ export function StagingProvider({ children }: { children: ReactNode }) {
     setReferenceImageUrl(url);
   };
 
-  const createFinalInstructions = (additionalInstructions?: string) => {
+  const createFinalInstructions = () => {
     let finalInstructions = stagingInstructions.trim();
-    
-    if (additionalInstructions) {
-      finalInstructions = additionalInstructions.trim();
-    } else if (finalInstructions.length === 0) {
+    if (finalInstructions.length === 0) {
       finalInstructions = 'Stage this room to look modern, stylish, and inviting with appropriate furniture.';
     }
-    
     return finalInstructions;
   };
 
-  const handleEdit = async (editInstructions: string) => {
+  const handleRegenerate = async () => {
     if (!currentProjectId) {
-      toast.error('Cannot edit without an active project');
+      toast.error('Cannot regenerate without an active project');
       return;
     }
     
@@ -104,21 +96,20 @@ export function StagingProvider({ children }: { children: ReactNode }) {
     setIsComplete(false);
     
     try {
-      const finalInstructions = createFinalInstructions(editInstructions);
+      const finalInstructions = createFinalInstructions();
       
-      console.log('Editing staged images for project:', currentProjectId);
+      console.log('Regenerating staged images for project:', currentProjectId);
       await generateStagedImages(
         currentProjectId,
         originalImageUrls[0],
         finalInstructions
       );
       
-      toast.info('Re-generating staged room with your edits. This may take a few minutes.');
-      setIsEditing(false);
+      toast.info('Regenerating staged room. This may take a few minutes.');
     } catch (error) {
-      console.error('Error editing staged room:', error);
+      console.error('Error regenerating staged room:', error);
       setIsProcessing(false);
-      toast.error('An error occurred while editing. Please try again.');
+      toast.error('An error occurred while regenerating. Please try again.');
     }
   };
 
@@ -131,7 +122,6 @@ export function StagingProvider({ children }: { children: ReactNode }) {
     setReferenceImageUrl(null);
     setIsProcessing(false);
     setIsComplete(false);
-    setIsEditing(false);
     setOriginalImagePreviews([]);
     setOriginalImageUrls([]);
     setStagedImageResults([]);
@@ -152,7 +142,6 @@ export function StagingProvider({ children }: { children: ReactNode }) {
         referenceImageUrl,
         isProcessing,
         isComplete,
-        isEditing,
         originalImagePreviews,
         originalImageUrls,
         stagedImageResults,
@@ -166,14 +155,13 @@ export function StagingProvider({ children }: { children: ReactNode }) {
         setStagedImageResults,
         setIsProcessing,
         setIsComplete,
-        setIsEditing,
         setCurrentProjectId,
         handleImagesSelected,
         handleImageUrlsReady,
         handleInstructionsChange,
         handleReferenceImageChange,
         handleReferenceImageUpload,
-        handleEdit,
+        handleRegenerate,
         resetState
       }}
     >

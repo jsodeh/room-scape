@@ -9,13 +9,9 @@ const ResultsStep = () => {
     stagedImageResults, 
     isProcessing, 
     isComplete,
-    setIsEditing,
+    handleRegenerate,
     resetState
   } = useStagingContext();
-
-  const handleEdit = (instructions: string) => {
-    setIsEditing(true);
-  };
 
   if (isProcessing) {
     return (
@@ -42,7 +38,7 @@ const ResultsStep = () => {
       <ResultsDisplay 
         originalImages={originalImageUrls}
         stagedImages={stagedImageResults}
-        onEdit={handleEdit}
+        onRegenerate={handleRegenerate}
         onReset={resetState}
       />
     </div>
