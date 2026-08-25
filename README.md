@@ -1,69 +1,158 @@
-# Welcome to your Lovable project
+# RoomScape 🛋️
 
-## Project info
+RoomScape (also styled as RoomScapR) is an open-source, AI-powered virtual room staging web application. It helps real estate professionals, interior designers, and homeowners transform empty, unfurnished spaces into beautifully styled rooms in minutes.
 
-**URL**: https://lovable.dev/projects/4cf8ce93-32c6-4955-a932-af8a5b604326
+By uploading photos of empty rooms and providing styling preferences (or reference images), RoomScape automatically analyzes design styles and stages the space with realistic furniture.
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## ✨ Features
 
-**Use Lovable**
+- **Virtual Room Staging Wizard**: A seamless three-step wizard guiding users from room photo upload to custom styling instruction input, through to final result generation.
+- **Reference Image Styling Analysis**: Users can upload a reference image representing their desired aesthetic. The application calls an AI-powered analyzer to extract styling details (color palettes, furniture types, layout principles, and materials) and generate precise instructions.
+- **Detailed Custom Controls**: Specify text prompts to direct the layout, design themes (minimalist, modern, industrial, rustic, etc.), and lighting properties.
+- **Staging Projects History**: Save, manage, and browse past virtual staging projects. Review original and staged image comparisons.
+- **Predefined Furniture Library**: Manage catalogs of styling items and furniture types to inject directly into the staging pipeline.
+- **Modern User Interface**: A responsive, accessible dashboard styled with Vanilla CSS, Tailwind CSS, and Radix UI components (shadcn-ui), complete with light/dark theme support.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/4cf8ce93-32c6-4955-a932-af8a5b604326) and start prompting.
+---
 
-Changes made via Lovable will be committed automatically to this repo.
+## 🛠️ Tech Stack
 
-**Use your preferred IDE**
+### Frontend
+- **Framework**: React 18 with TypeScript and Vite
+- **Styling**: Tailwind CSS & Vanilla CSS (with custom theme support)
+- **UI Components**: shadcn-ui (built on top of Radix UI primitives)
+- **State & Data Fetching**: TanStack Query (React Query) & React Context API
+- **Routing**: React Router DOM v6
+- **Icons**: Lucide React
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Backend & Database (Supabase)
+- **Database**: PostgreSQL (provided by Supabase)
+- **Authentication**: Supabase Auth (User sign-up, sign-in, password reset)
+- **File Storage**: Supabase Storage for uploading original room images and storing staged results
+- **Edge Functions**: Deno-based Edge Functions executing serverless logic:
+  - `gemini-analyzer`: Analyzes reference images using Google Gemini to extract styling guidelines.
+  - `generate-staged-room`: Coordinates staging operations with Stability AI.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### AI Model Integrations
+- **Google Gemini API**: Utilized for visual reasoning to analyze room dimensions, reference styling patterns, and output structured layout instructions.
+- **Stability AI API**: Leveraged to run state-of-the-art image-to-image translation, controlnet, or inpainting algorithms to render furniture into the empty room image coordinates.
 
-Follow these steps:
+---
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## 🚀 Getting Started
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Prerequisites
+Make sure you have the following installed on your machine:
+- **Node.js** (v18.x or later)
+- **npm** (or Bun / Yarn)
+- **Supabase CLI** (for local backend development or deploying Edge Functions)
 
-# Step 3: Install the necessary dependencies.
-npm i
+---
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+### Local Frontend Setup
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/your-username/room-scape.git
+   cd room-scape
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Configure environment variables**:
+   Create a `.env` file in the root directory and add your Supabase credentials:
+   ```env
+   VITE_SUPABASE_URL=https://your-supabase-project-url.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+   ```
+
+4. **Start the development server**:
+   ```bash
+   npm run dev
+   ```
+   Open your browser and navigate to `http://localhost:8080`.
+
+---
+
+### Supabase Backend & Edge Functions Setup
+
+RoomScape relies on Supabase Edge Functions to safely interact with Google Gemini and Stability AI without exposing API keys on the client-side.
+
+1. **Log in to Supabase CLI**:
+   ```bash
+   supabase login
+   ```
+
+2. **Link the CLI to your project**:
+   Get your project reference ID from your Supabase Dashboard settings and run:
+   ```bash
+   supabase link --project-ref your-project-ref-id
+   ```
+
+3. **Set Secrets for Edge Functions**:
+   Before deploying, set up the required API keys as secrets within your Supabase project:
+   ```bash
+   supabase secrets set GEMINI_API_KEY="your-gemini-api-key"
+   supabase secrets set STABILITY_API_KEY="your-stability-api-key"
+   ```
+
+4. **Deploy Edge Functions**:
+   Deploy the functions defined under the `supabase/functions/` folder:
+   ```bash
+   supabase functions deploy gemini-analyzer
+   supabase functions deploy generate-staged-room
+   ```
+
+5. **Local Edge Function Development (Optional)**:
+   If you want to run Edge Functions locally, set up a local `.env` file inside `supabase/functions/` or use `--env-file`:
+   ```bash
+   supabase functions serve --env-file supabase/.env.local
+   ```
+
+---
+
+## 📂 Project Structure
+
+```
+├── public/                 # Static assets
+├── supabase/
+│   ├── config.toml        # Supabase project configuration
+│   └── functions/          # Deno Edge Functions
+│       ├── gemini-analyzer/       # Analyzes reference images using Gemini
+│       └── generate-staged-room/  # Performs virtual staging via Stability AI
+├── src/
+│   ├── components/         # Reusable React components (Header, Footer, UI primitives)
+│   │   ├── staging-wizard/ # Multistep staging wizard (Upload, Instruct, View)
+│   │   └── ui/             # shadcn-ui customized primitives
+│   ├── context/            # AuthContext and StagingContext for global state
+│   ├── hooks/              # Custom React hooks (e.g., useStagingProcessor)
+│   ├── integrations/       # Supabase client setup and DB types
+│   ├── pages/              # View pages (Index/Home, Auth, Profile, ProjectDetail)
+│   ├── services/           # Api service wrappers (stagingService, furnitureService)
+│   ├── types/              # TypeScript interface definitions
+│   └── utils/              # Helper utilities
+├── tailwind.config.ts      # Tailwind styling configuration
+└── vite.config.ts          # Vite build parameters
 ```
 
-**Edit a file directly in GitHub**
+---
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 🤝 Contributing
 
-**Use GitHub Codespaces**
+We welcome contributions! To contribute:
+1. Fork the project.
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`).
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`).
+4. Push to the branch (`git push origin feature/AmazingFeature`).
+5. Open a Pull Request.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+---
 
-## What technologies are used for this project?
+## 📄 License
 
-This project is built with .
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/4cf8ce93-32c6-4955-a932-af8a5b604326) and click on Share -> Publish.
-
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+Distributed under the MIT License. See [LICENSE](file:///Users/apple/Documents/Dev/RoomScape/room-scape/LICENSE) for more details.
