@@ -1,156 +1,120 @@
-
-import { useState } from 'react';
-import { Upload, X, Sparkles } from 'lucide-react';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
-import { uploadImage } from '@/services/fileStorageService';
-import ReferenceImageAnalyzer from './ReferenceImageAnalyzer';
-
+import { useEffect, useRef, useState } from "react";
+import { ImagePlus, Loader2, X } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { uploadImage } from "@/services/fileStorageService";
+import { prepareRoomImage } from "@/utils/prepareRoomImage";
+import ReferenceImageAnalyzer from "./ReferenceImageAnalyzer";
 interface ReferenceImageUploaderProps {
   onReferenceImageChange: (file: File | null) => void;
   onReferenceImageUpload?: (url: string | null) => void;
   onAnalysisInstructionsGenerated?: (instructions: string) => void;
+  disabled?: boolean;
 }
-
-const ReferenceImageUploader = ({ 
-  onReferenceImageChange, 
+export default function ReferenceImageUploader({
+  onReferenceImageChange,
   onReferenceImageUpload,
-  onAnalysisInstructionsGenerated
-}: ReferenceImageUploaderProps) => {
-  const [referenceImage, setReferenceImage] = useState<File | null>(null);
-  const [referenceImagePreview, setReferenceImagePreview] = useState<string | null>(null);
-  const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-
-  const handleReferenceImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      
-      if (!file.type.startsWith('image/')) {
-        toast.error('Please upload an image file');
-        return;
-      }
-      
-      setReferenceImage(file);
-      onReferenceImageChange(file);
-      
-      // Create preview URL
-      const imageUrl = URL.createObjectURL(file);
-      setReferenceImagePreview(imageUrl);
-      
-      // Upload the reference image if the handler is provided
-      if (onReferenceImageUpload) {
-        setIsUploading(true);
-        try {
-          console.log('Uploading reference image');
-          const uploadedUrl = await uploadImage(file, 'reference-images');
-          console.log('Uploaded reference image URL:', uploadedUrl);
-          
-          if (uploadedUrl) {
-            setReferenceImageUrl(uploadedUrl);
-            onReferenceImageUpload(uploadedUrl);
-            toast.success('Reference image uploaded');
-          } else {
-            throw new Error('Failed to upload reference image');
-          }
-        } catch (error) {
-          console.error('Error uploading reference image:', error);
-          toast.error('Failed to upload reference image');
-        } finally {
-          setIsUploading(false);
-        }
-      } else {
-        toast.success('Reference image selected');
-      }
+  onAnalysisInstructionsGenerated,
+  disabled = false,
+}: ReferenceImageUploaderProps) {
+  const input = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [url, setUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  useEffect(
+    () => () => {
+      if (preview) URL.revokeObjectURL(preview);
+    },
+    [preview],
+  );
+  const select = async (file?: File) => {
+    if (!file || uploading || disabled) return;
+    setUploading(true);
+    try {
+      const prepared = await prepareRoomImage(file);
+      const uploadedUrl = onReferenceImageUpload
+        ? await uploadImage(prepared, "reference-images")
+        : null;
+      if (onReferenceImageUpload && !uploadedUrl)
+        throw new Error("The reference image could not be uploaded.");
+      setPreview(URL.createObjectURL(prepared));
+      setUrl(uploadedUrl);
+      onReferenceImageChange(prepared);
+      onReferenceImageUpload?.(uploadedUrl);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Please try another reference image.",
+      );
+    } finally {
+      setUploading(false);
+      if (input.current) input.current.value = "";
     }
   };
-
-  const removeReferenceImage = () => {
-    if (referenceImagePreview) {
-      URL.revokeObjectURL(referenceImagePreview);
-    }
-    
-    setReferenceImage(null);
-    setReferenceImagePreview(null);
-    setReferenceImageUrl(null);
-    onReferenceImageChange(null);
-    if (onReferenceImageUpload) {
-      onReferenceImageUpload(null);
-    }
-  };
-
-  const handleInstructionsGenerated = (instructions: string) => {
-    if (onAnalysisInstructionsGenerated) {
-      onAnalysisInstructionsGenerated(instructions);
-    }
-  };
-
   return (
     <div className="space-y-2">
-      <Label htmlFor="referenceImage" className="text-base">Reference Image (Optional)</Label>
-      <p className="text-sm text-muted-foreground mb-3">
-        Upload a reference image showing the style or layout you prefer
+      <p className="text-xs font-medium">A little visual inspiration</p>
+      <p className="text-[11px] text-muted-foreground">
+        Add a reference, then analyse it to apply its style to your brief.
       </p>
-      
-      {!referenceImagePreview ? (
-        <div className="border-2 border-dashed rounded-lg p-8 text-center hover:bg-gray-50 transition-colors">
-          <input
-            type="file"
-            id="referenceImage"
-            accept="image/*"
-            className="hidden"
-            onChange={handleReferenceImageChange}
-            disabled={isUploading}
-          />
-          <Label
-            htmlFor="referenceImage"
-            className="flex flex-col items-center justify-center cursor-pointer"
-          >
-            <Upload className="h-8 w-8 text-gray-400 mb-3" />
-            <span className="text-sm font-medium">Upload reference image</span>
-            <span className="text-xs text-muted-foreground mt-1">JPG, PNG up to 10MB</span>
-            <Button className="mt-4" size="sm" variant="secondary" disabled={isUploading}>
-              {isUploading ? 'Uploading...' : 'Choose Image'}
+      <input
+        ref={input}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        aria-label="Upload reference image"
+        className="hidden"
+        onChange={(event) => void select(event.target.files?.[0])}
+        disabled={disabled || uploading}
+      />
+      {preview ? (
+        <div className="overflow-hidden rounded-lg border">
+          <div className="relative">
+            <img
+              src={preview}
+              alt="Your style reference"
+              className="h-32 w-full object-contain bg-secondary"
+            />
+            <Button
+              type="button"
+              size="icon"
+              variant="secondary"
+              className="absolute right-2 top-2 h-7 w-7"
+              aria-label="Remove reference image"
+              disabled={disabled || uploading}
+              onClick={() => {
+                setPreview(null);
+                setUrl(null);
+                onReferenceImageChange(null);
+                onReferenceImageUpload?.(null);
+              }}
+            >
+              <X />
             </Button>
-          </Label>
+          </div>
+          {url && (
+            <div className="p-3">
+              <ReferenceImageAnalyzer
+                referenceImageUrl={url}
+                onInstructionsGenerated={(value) =>
+                  onAnalysisInstructionsGenerated?.(value)
+                }
+              />
+            </div>
+          )}
         </div>
       ) : (
-        <div className="relative rounded-lg overflow-hidden border border-gray-200">
-          <img
-            src={referenceImagePreview}
-            alt="Reference"
-            className="w-full h-48 object-cover"
-          />
-          <div className="absolute top-2 right-2">
-            <Button
-              variant="destructive"
-              size="icon"
-              className="h-8 w-8"
-              onClick={removeReferenceImage}
-              disabled={isUploading}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="p-3 bg-gray-50">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-amber-500" />
-              <span className="text-sm font-medium">Reference image will guide the styling</span>
-            </div>
-            
-            {/* Add the analyzer component - only if we have an uploaded URL */}
-            {referenceImageUrl && (
-              <ReferenceImageAnalyzer 
-                referenceImageUrl={referenceImageUrl} 
-                onInstructionsGenerated={handleInstructionsGenerated}
-              />
-            )}
-          </div>
-        </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-auto w-full whitespace-normal border-dashed py-4 text-xs"
+          disabled={disabled || uploading}
+          onClick={() => input.current?.click()}
+        >
+          {uploading ? <Loader2 className="animate-spin" /> : <ImagePlus />}
+          {uploading ? "Preparing reference…" : "Add reference image"}
+        </Button>
       )}
     </div>
   );
-};
-
-export default ReferenceImageUploader;
+}

@@ -1,58 +1,32 @@
-
-import { useProjectPolling } from './useProjectPolling';
-import { useStagingSubmission } from './useStagingSubmission';
-import { useErrorReporting } from './useErrorReporting';
-
+import { useProjectPolling } from "./useProjectPolling";
+import { useStagingSubmission } from "./useStagingSubmission";
+import { useErrorReporting } from "./useErrorReporting";
 interface StagingProcessorProps {
   userId?: string;
   originalImageUrls: string[];
   stagingInstructions: string;
   referenceImageUrl: string | null;
   currentProjectId: string | null;
+  isProcessing: boolean;
   setCurrentProjectId: (id: string | null) => void;
   setStagedImageResults: (results: string[]) => void;
-  setIsProcessing: (isProcessing: boolean) => void;
-  setIsComplete: (isComplete: boolean) => void;
+  setIsProcessing: (processing: boolean) => void;
+  setIsComplete: (complete: boolean) => void;
 }
-
-export function useStagingProcessor({
-  userId,
-  originalImageUrls,
-  stagingInstructions,
-  referenceImageUrl,
-  currentProjectId,
-  setCurrentProjectId,
-  setStagedImageResults,
-  setIsProcessing,
-  setIsComplete
-}: StagingProcessorProps) {
-  // Set up error reporting
-  const { errors, hasErrors, getFirstError, reportError, clearError } = useErrorReporting();
-
-  // Set up polling for project status updates
-  const { resetPolling } = useProjectPolling({
-    projectId: currentProjectId,
-    onComplete: setStagedImageResults,
-    onProcessingChange: setIsProcessing,
-    onCompleteChange: setIsComplete
+export function useStagingProcessor(props: StagingProcessorProps) {
+  const reporting = useErrorReporting();
+  useProjectPolling({
+    projectId: props.currentProjectId,
+    enabled: props.isProcessing,
+    onComplete: props.setStagedImageResults,
+    onProcessingChange: props.setIsProcessing,
+    onCompleteChange: props.setIsComplete,
+    onError: (message) => reporting.reportError("polling", message),
   });
-
-  // Set up submission functionality
-  const { handleSubmit } = useStagingSubmission({
-    userId,
-    originalImageUrls,
-    stagingInstructions,
-    referenceImageUrl,
-    setCurrentProjectId,
-    setIsProcessing,
-    reportError,
-    clearError
+  const submission = useStagingSubmission({
+    ...props,
+    reportError: reporting.reportError,
+    clearError: () => reporting.clearError(),
   });
-
-  return {
-    handleSubmit,
-    errors,
-    hasErrors,
-    getFirstError
-  };
+  return { ...submission, ...reporting };
 }
