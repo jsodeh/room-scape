@@ -1,87 +1,14 @@
-
-import { useState } from 'react';
-import { toast } from 'sonner';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import StagingWizard from '@/components/staging-wizard/StagingWizard';
-import { StagingProvider, useStagingContext } from '@/context/StagingContext';
-import { useStagingProcessor } from '@/hooks/useStagingProcessor';
-import { useAuth } from '@/context/AuthContext';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
-
-const StagingContent = () => {
-  const { user } = useAuth();
-  const { 
-    uploadedImages,
-    stagingInstructions,
-    referenceImageUrl,
-    isProcessing,
-    isComplete,
-    originalImageUrls,
-    stagedImageResults,
-    currentProjectId,
-    setCurrentProjectId,
-    setStagedImageResults,
-    setIsProcessing,
-    setIsComplete,
-    resetState
-  } = useStagingContext();
-
-  const { 
-    handleSubmit, 
-    hasErrors, 
-    getFirstError 
-  } = useStagingProcessor({
-    userId: user?.id,
-    originalImageUrls,
-    stagingInstructions,
-    referenceImageUrl,
-    currentProjectId,
-    setCurrentProjectId,
-    setStagedImageResults,
-    setIsProcessing,
-    setIsComplete
-  });
-
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import DesignStudio from "@/components/studio/DesignStudio";
+export default function Index() {
   return (
-    <div className="max-w-3xl mx-auto pt-12">
-      <div className="text-center mb-10 space-y-3">
-        <h1 className="text-3xl font-semibold">Virtual Room Staging</h1>
-        <p className="text-gray-600 max-w-xl mx-auto">
-          Transform empty spaces into beautifully staged rooms with AI. 
-          Upload photos and provide instructions to get started.
-        </p>
-      </div>
-      
-      {hasErrors() && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {getFirstError()?.message || 'An error occurred. Please try again.'}
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      <StagingWizard onSubmit={handleSubmit} />
-    </div>
-  );
-};
-
-const Index = () => {
-  return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex min-h-screen flex-col">
       <Header />
-      
-      <main className="flex-1 py-16 px-4 container mx-auto">
-        <StagingProvider>
-          <StagingContent />
-        </StagingProvider>
+      <main id="main-content" className="page-width flex-1 pb-10 pt-8 sm:pt-10">
+        <DesignStudio />
       </main>
-      
       <Footer />
     </div>
   );
-};
-
-export default Index;
+}

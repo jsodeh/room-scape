@@ -1,32 +1,67 @@
-
-import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
-import { StagingContextType } from './staging/types';
-import { initialStagingState } from './staging/stagingState';
-import { 
+import {
+  createContext,
+  useContext,
+  ReactNode,
+  useState,
+  useEffect,
+  useRef,
+} from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/context/AuthContext";
+import { StagingContextType } from "./staging/types";
+import { initialStagingState } from "./staging/stagingState";
+import {
   createImagesSelectedHandler,
   createEditSubmitHandler,
   createEditHandler,
-  createResetStateHandler
-} from './staging/stagingHandlers';
+  createResetStateHandler,
+} from "./staging/stagingHandlers";
 
 const StagingContext = createContext<StagingContextType | undefined>(undefined);
 
 export function StagingProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const previousUser = useRef<string | null>(null);
   // Initialize state using our initial state object
-  const [uploadedImages, setUploadedImages] = useState<File[]>(initialStagingState.uploadedImages);
-  const [stagingInstructions, setStagingInstructions] = useState(initialStagingState.stagingInstructions);
-  const [editInstructions, setEditInstructions] = useState(initialStagingState.editInstructions);
+  const [uploadedImages, setUploadedImages] = useState<File[]>(
+    initialStagingState.uploadedImages,
+  );
+  const [stagingInstructions, setStagingInstructions] = useState(
+    initialStagingState.stagingInstructions,
+  );
+  const [editInstructions, setEditInstructions] = useState(
+    initialStagingState.editInstructions,
+  );
   const [isEditMode, setIsEditMode] = useState(initialStagingState.isEditMode);
-  const [referenceImage, setReferenceImage] = useState<File | null>(initialStagingState.referenceImage);
-  const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(initialStagingState.referenceImageUrl);
-  const [isProcessing, setIsProcessing] = useState(initialStagingState.isProcessing);
+  const [referenceImage, setReferenceImage] = useState<File | null>(
+    initialStagingState.referenceImage,
+  );
+  const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(
+    initialStagingState.referenceImageUrl,
+  );
+  const [isProcessing, setIsProcessing] = useState(
+    initialStagingState.isProcessing,
+  );
   const [isComplete, setIsComplete] = useState(initialStagingState.isComplete);
-  const [originalImagePreviews, setOriginalImagePreviews] = useState<string[]>(initialStagingState.originalImagePreviews);
-  const [originalImageUrls, setOriginalImageUrls] = useState<string[]>(initialStagingState.originalImageUrls);
-  const [stagedImageResults, setStagedImageResults] = useState<string[]>(initialStagingState.stagedImageResults);
-  const [stagedImageHistory, setStagedImageHistory] = useState<string[][]>(initialStagingState.stagedImageHistory);
-  const [currentProjectId, setCurrentProjectId] = useState<string | null>(initialStagingState.currentProjectId);
-  const [pollingInterval, setPollingInterval] = useState<number | null>(initialStagingState.pollingInterval);
+  const [originalImagePreviews, setOriginalImagePreviews] = useState<string[]>(
+    initialStagingState.originalImagePreviews,
+  );
+  const [originalImageUrls, setOriginalImageUrls] = useState<string[]>(
+    initialStagingState.originalImageUrls,
+  );
+  const [stagedImageResults, setStagedImageResults] = useState<string[]>(
+    initialStagingState.stagedImageResults,
+  );
+  const [stagedImageHistory, setStagedImageHistory] = useState<string[][]>(
+    initialStagingState.stagedImageHistory,
+  );
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(
+    initialStagingState.currentProjectId,
+  );
+  const [pollingInterval, setPollingInterval] = useState<number | null>(
+    initialStagingState.pollingInterval,
+  );
 
   // Clear polling interval on unmount
   useEffect(() => {
@@ -37,17 +72,35 @@ export function StagingProvider({ children }: { children: ReactNode }) {
     };
   }, [pollingInterval]);
 
+  useEffect(
+    () => () => {
+      originalImagePreviews.forEach((url) => URL.revokeObjectURL(url));
+    },
+    [originalImagePreviews],
+  );
+
   // Track staged image history when results change
   useEffect(() => {
     if (stagedImageResults.length > 0 && isComplete) {
-      setStagedImageHistory(prevHistory => [...prevHistory, [...stagedImageResults]]);
+      void queryClient.invalidateQueries({
+        queryKey: ["staging-projects", user?.id],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["staging-project", user?.id, currentProjectId],
+      });
+      setStagedImageHistory((prevHistory) =>
+        JSON.stringify(prevHistory[prevHistory.length - 1]) ===
+        JSON.stringify(stagedImageResults)
+          ? prevHistory
+          : [...prevHistory, [...stagedImageResults]],
+      );
     }
-  }, [stagedImageResults, isComplete]);
+  }, [stagedImageResults, isComplete, queryClient, user?.id, currentProjectId]);
 
   // Create handlers using our factory functions
   const handleImagesSelected = createImagesSelectedHandler(
     setUploadedImages,
-    setOriginalImagePreviews
+    setOriginalImagePreviews,
   );
 
   const handleImageUrlsReady = (urls: string[]) => {
@@ -70,10 +123,7 @@ export function StagingProvider({ children }: { children: ReactNode }) {
     setReferenceImageUrl(url);
   };
 
-  const handleEdit = createEditHandler(
-    setEditInstructions,
-    setIsEditMode
-  );
+  const handleEdit = createEditHandler(setEditInstructions, setIsEditMode);
 
   const handleEditSubmit = createEditSubmitHandler(
     currentProjectId,
@@ -81,7 +131,8 @@ export function StagingProvider({ children }: { children: ReactNode }) {
     editInstructions,
     setIsProcessing,
     setIsComplete,
-    setIsEditMode
+    setIsEditMode,
+    setStagedImageResults,
   );
 
   const resetState = createResetStateHandler(
@@ -100,8 +151,16 @@ export function StagingProvider({ children }: { children: ReactNode }) {
     setStagedImageHistory,
     setCurrentProjectId,
     pollingInterval,
-    setPollingInterval
+    setPollingInterval,
   );
+
+  const resetRef = useRef(resetState);
+  resetRef.current = resetState;
+  useEffect(() => {
+    if (previousUser.current && previousUser.current !== (user?.id || null))
+      resetRef.current();
+    previousUser.current = user?.id || null;
+  }, [user?.id]);
 
   return (
     <StagingContext.Provider
@@ -140,7 +199,7 @@ export function StagingProvider({ children }: { children: ReactNode }) {
         handleReferenceImageUpload,
         handleEdit,
         handleEditSubmit,
-        resetState
+        resetState,
       }}
     >
       {children}
@@ -151,7 +210,7 @@ export function StagingProvider({ children }: { children: ReactNode }) {
 export function useStagingContext() {
   const context = useContext(StagingContext);
   if (context === undefined) {
-    throw new Error('useStagingContext must be used within a StagingProvider');
+    throw new Error("useStagingContext must be used within a StagingProvider");
   }
   return context;
 }

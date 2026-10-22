@@ -1,99 +1,80 @@
-import { useState, useEffect } from 'react';
-import { toast } from 'sonner';
-import { getStagingProject } from '@/services/stagingService';
-import { useErrorReporting } from './useErrorReporting';
-
+import { useCallback, useEffect, useRef, useState } from "react";
+import { getStagingProject } from "@/services/stagingService";
 interface UseProjectPollingProps {
   projectId: string | null;
-  onComplete: (stagedImages: string[]) => void;
-  onProcessingChange: (isProcessing: boolean) => void;
-  onCompleteChange: (isComplete: boolean) => void;
+  enabled?: boolean;
+  onComplete: (images: string[]) => void;
+  onProcessingChange: (processing: boolean) => void;
+  onCompleteChange: (complete: boolean) => void;
+  onError?: (message: string) => void;
 }
-
 export function useProjectPolling({
   projectId,
+  enabled = true,
   onComplete,
   onProcessingChange,
-  onCompleteChange
+  onCompleteChange,
+  onError,
 }: UseProjectPollingProps) {
-  const [pollingInterval, setPollingInterval] = useState<number | null>(null);
-  const [pollingCount, setPollingCount] = useState(0);
-  const { reportError, clearError } = useErrorReporting();
-
-  // Clean up polling interval on unmount
+  const [restart, setRestart] = useState(0);
+  const callbacks = useRef({
+    onComplete,
+    onProcessingChange,
+    onCompleteChange,
+    onError,
+  });
+  callbacks.current = {
+    onComplete,
+    onProcessingChange,
+    onCompleteChange,
+    onError,
+  };
   useEffect(() => {
-    return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
+    if (!projectId || !enabled) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const started = Date.now();
+    const poll = async () => {
+      if (cancelled) return;
+      if (Date.now() - started > 5 * 60 * 1000) {
+        callbacks.current.onProcessingChange(false);
+        callbacks.current.onError?.(
+          "This design is taking longer than expected. Check its status in Projects before trying again.",
+        );
+        return;
       }
-    };
-  }, [pollingInterval]);
-
-  // Poll for project status updates
-  useEffect(() => {
-    if (projectId && onProcessingChange) {
-      const MAX_POLLING_COUNT = 60; // 5 minutes max (5000ms * 60)
-      
-      const interval = window.setInterval(async () => {
-        try {
-          setPollingCount(prev => prev + 1);
-          
-          // If we've been polling for too long, assume something went wrong
-          if (pollingCount > MAX_POLLING_COUNT) {
-            onProcessingChange(false);
-            clearInterval(interval);
-            reportError('polling', 'Staging timed out. Please try again with a smaller image or different instructions.');
-            console.error('Staging timed out after maximum polling attempts');
-            return;
-          }
-          
-          console.log(`Polling project status (attempt ${pollingCount})...`);
-          const project = await getStagingProject(projectId);
-          
-          if (project) {
-            console.log(`Project status: ${project.status}`, project);
-            
-            if (project.status === 'completed') {
-              if (project.staged_images && project.staged_images.length > 0) {
-                onComplete(project.staged_images);
-                onProcessingChange(false);
-                onCompleteChange(true);
-                clearInterval(interval);
-                toast.success('Staging complete! Check out your results.');
-                console.log('Staging completed successfully');
-                clearError();  // Clear any errors on success
-              } else {
-                onProcessingChange(false);
-                clearInterval(interval);
-                reportError('polling', 'No images were generated. Please try again with different settings.');
-                console.error('Project marked as completed but no images were returned');
-              }
-            } else if (project.status === 'failed') {
-              onProcessingChange(false);
-              clearInterval(interval);
-              const errorMessage = project.error_message || 'Staging failed. Please try again.';
-              reportError('polling', errorMessage);
-              console.error('Project failed with message:', errorMessage);
-            } else {
-              // Still processing, keep polling
-              console.log(`Project status: ${project.status}`);
-            }
-          } else {
-            console.error('Could not retrieve project data during polling');
-          }
-        } catch (error) {
-          console.error('Error polling project status:', error);
-          reportError('polling', 'Error checking project status', error);
+      try {
+        const project = await getStagingProject(projectId);
+        if (cancelled) return;
+        if (project?.status === "completed") {
+          callbacks.current.onProcessingChange(false);
+          if (project.staged_images?.length) {
+            callbacks.current.onComplete(project.staged_images);
+            callbacks.current.onCompleteChange(true);
+          } else
+            callbacks.current.onError?.(
+              "No image was returned. Please try a different design brief.",
+            );
+          return;
         }
-      }, 5000); // Poll every 5 seconds
-      
-      setPollingInterval(interval);
-      
-      return () => {
-        if (interval) clearInterval(interval);
-      };
-    }
-  }, [projectId, onProcessingChange, onComplete, onCompleteChange, pollingCount, reportError, clearError]);
-
-  return { resetPolling: () => setPollingCount(0) };
+        if (project?.status === "failed") {
+          callbacks.current.onProcessingChange(false);
+          callbacks.current.onError?.(
+            "This design could not be completed. Please try again.",
+          );
+          return;
+        }
+      } catch {
+        /* A temporary connection failure can recover on the next poll. */
+      }
+      if (!cancelled) timer = setTimeout(poll, 5000);
+    };
+    timer = setTimeout(poll, 1500);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [projectId, enabled, restart]);
+  const resetPolling = useCallback(() => setRestart((value) => value + 1), []);
+  return { resetPolling };
 }

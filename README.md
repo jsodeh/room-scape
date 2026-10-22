@@ -1,6 +1,6 @@
 # RoomScape 🛋️
 
-RoomScape (also styled as RoomScapR) is an open-source, AI-powered virtual room staging web application. It helps real estate professionals, interior designers, and homeowners transform empty, unfurnished spaces into beautifully styled rooms in minutes.
+RoomScape (also styled as Roomscape) is an open-source, AI-powered virtual room staging web application. It helps real estate professionals, interior designers, and homeowners transform empty, unfurnished spaces into beautifully styled rooms in minutes.
 
 By uploading photos of empty rooms and providing styling preferences (or reference images), RoomScape automatically analyzes design styles and stages the space with realistic furniture.
 
@@ -8,18 +8,19 @@ By uploading photos of empty rooms and providing styling preferences (or referen
 
 ## ✨ Features
 
-- **Virtual Room Staging Wizard**: A seamless three-step wizard guiding users from room photo upload to custom styling instruction input, through to final result generation.
+- **Design Studio**: An image-led workspace with room type, visual style cards, colour palettes, furnishing density, optional reference analysis, and a design brief. Upload one room photo per design.
 - **Reference Image Styling Analysis**: Users can upload a reference image representing their desired aesthetic. The application calls an AI-powered analyzer to extract styling details (color palettes, furniture types, layout principles, and materials) and generate precise instructions.
 - **Detailed Custom Controls**: Specify text prompts to direct the layout, design themes (minimalist, modern, industrial, rustic, etc.), and lighting properties.
-- **Staging Projects History**: Save, manage, and browse past virtual staging projects. Review original and staged image comparisons.
+- **Projects Dashboard**: Browse saved rooms with search and status filters. Compare original and staged images using a keyboard-accessible slider, expand and zoom results, download images, and refine a design. Revision history is available for the current studio session.
 - **Predefined Furniture Library**: Manage catalogs of styling items and furniture types to inject directly into the staging pipeline.
-- **Modern User Interface**: A responsive, accessible dashboard styled with Vanilla CSS, Tailwind CSS, and Radix UI components (shadcn-ui), complete with light/dark theme support.
+- **Modern User Interface**: A responsive, accessible dashboard styled with Vanilla CSS, Tailwind CSS, and Radix UI components (shadcn-ui), complete with light/dark theme support and mobile generation controls.
 
 ---
 
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - **Framework**: React 18 with TypeScript and Vite
 - **Styling**: Tailwind CSS & Vanilla CSS (with custom theme support)
 - **UI Components**: shadcn-ui (built on top of Radix UI primitives)
@@ -28,6 +29,7 @@ By uploading photos of empty rooms and providing styling preferences (or referen
 - **Icons**: Lucide React
 
 ### Backend & Database (Supabase)
+
 - **Database**: PostgreSQL (provided by Supabase)
 - **Authentication**: Supabase Auth (User sign-up, sign-in, password reset)
 - **File Storage**: Supabase Storage for uploading original room images and storing staged results
@@ -36,6 +38,7 @@ By uploading photos of empty rooms and providing styling preferences (or referen
   - `generate-staged-room`: Coordinates staging operations with Stability AI.
 
 ### AI Model Integrations
+
 - **Google Gemini API**: Utilized for visual reasoning to analyze room dimensions, reference styling patterns, and output structured layout instructions.
 - **Stability AI API**: Leveraged to run state-of-the-art image-to-image translation, controlnet, or inpainting algorithms to render furniture into the empty room image coordinates.
 
@@ -44,38 +47,37 @@ By uploading photos of empty rooms and providing styling preferences (or referen
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 Make sure you have the following installed on your machine:
-- **Node.js** (v18.x or later)
+
+- **Node.js** (v18.x or later; Node.js 22 is recommended and was used for validation)
 - **npm** (or Bun / Yarn)
-- **Supabase CLI** (for local backend development or deploying Edge Functions)
+- **Supabase CLI** (optional, for local backend development or deploying Edge Functions)
 
 ---
 
 ### Local Frontend Setup
 
 1. **Clone the repository**:
+
    ```bash
-   git clone https://github.com/your-username/room-scape.git
+   git clone https://github.com/jsodeh/room-scape.git
    cd room-scape
    ```
 
 2. **Install dependencies**:
+
    ```bash
-   npm install
+   npm ci
    ```
 
-3. **Configure environment variables**:
-   Create a `.env` file in the root directory and add your Supabase credentials:
-   ```env
-   VITE_SUPABASE_URL=https://your-supabase-project-url.supabase.co
-   VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
-   ```
-
-4. **Start the development server**:
+3. **Start the development server**:
    ```bash
    npm run dev
    ```
    Open your browser and navigate to `http://localhost:8080`.
+
+No `.env` file is required to view the studio. The active frontend uses the checked-in public Supabase configuration in `src/integrations/supabase/client.ts`. Signing in, loading saved projects, reference analysis, and generation depend on that backend being available and configured. Connecting a different backend requires updating that generated client configuration; the `VITE_SUPABASE_*` variables read by the separate legacy client in `src/lib/supabase.ts` do not configure the active application client.
 
 ---
 
@@ -84,18 +86,21 @@ Make sure you have the following installed on your machine:
 RoomScape relies on Supabase Edge Functions to safely interact with Google Gemini and Stability AI without exposing API keys on the client-side.
 
 1. **Log in to Supabase CLI**:
+
    ```bash
    supabase login
    ```
 
 2. **Link the CLI to your project**:
    Get your project reference ID from your Supabase Dashboard settings and run:
+
    ```bash
    supabase link --project-ref your-project-ref-id
    ```
 
 3. **Set Secrets for Edge Functions**:
    Before deploying, set up the required API keys as secrets within your Supabase project:
+
    ```bash
    supabase secrets set GEMINI_API_KEY="your-gemini-api-key"
    supabase secrets set STABILITY_API_KEY="your-stability-api-key"
@@ -103,6 +108,7 @@ RoomScape relies on Supabase Edge Functions to safely interact with Google Gemin
 
 4. **Deploy Edge Functions**:
    Deploy the functions defined under the `supabase/functions/` folder:
+
    ```bash
    supabase functions deploy gemini-analyzer
    supabase functions deploy generate-staged-room
@@ -145,6 +151,7 @@ RoomScape relies on Supabase Edge Functions to safely interact with Google Gemin
 ## 🤝 Contributing
 
 We welcome contributions! To contribute:
+
 1. Fork the project.
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`).
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`).
@@ -156,3 +163,21 @@ We welcome contributions! To contribute:
 ## 📄 License
 
 Distributed under the MIT License. See [LICENSE](file:///Users/apple/Documents/Dev/RoomScape/room-scape/LICENSE) for more details.
+
+## Redesign development and validation
+
+See [the implementation plan](docs/IMPLEMENTATION_PLAN.md) for scope, completed work, and the next backend phase. Studio preferences are stored in browser session storage. The selected photo remains in memory through sign-in and navigation; it must be uploaded again after a page refresh.
+
+```sh
+npm ci
+npm run dev
+npm run typecheck
+npm run build
+# Install a Playwright browser once if one is not already available:
+npx playwright install chromium
+npm run test:e2e
+```
+
+The browser suite runs its own Vite server on port 4173. To use an installed Chromium binary, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/path/to/chromium`. In the prepared cloud environment the path is `/usr/bin/chromium`. Tests mock Supabase authentication, storage, project records, and generation responses; they never write to live projects or call paid inference services. Live backend credentials, storage policies, model quality, and full server authorization require separate integration validation.
+
+The checked-in room image is AI-generated illustrative artwork. Inspiration thumbnails do not represent a user's generated result. Preserving architecture is sent as an instruction to the existing model; it is not a guaranteed editing constraint.

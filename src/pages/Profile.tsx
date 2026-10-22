@@ -1,63 +1,66 @@
-
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import ProfileForm from '@/components/profile/ProfileForm';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import ProjectsList from '@/components/projects/ProjectsList';
-import { useAuth } from '@/context/AuthContext';
-import { Shield } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-
-const Profile = () => {
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("account");
-
+import { Link, Navigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/components/ThemeProvider";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import ProfileForm from "@/components/profile/ProfileForm";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
+export default function Profile() {
+  const { user, loading } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const [params] = useSearchParams();
+  if (params.get("tab") === "projects")
+    return <Navigate to="/projects" replace />;
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex min-h-screen flex-col">
       <Header />
-      
-      <main className="flex-1 py-16 px-4 container mx-auto">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold">Your Profile</h1>
-            
-            {/* Admin Panel Link */}
-            <Link to="/admin/furniture">
-              <Button variant="outline" className="gap-2">
-                <Shield className="h-4 w-4" />
-                Resource Admin
-              </Button>
-            </Link>
-          </div>
-          
-          {user ? (
-            <Tabs defaultValue="account" value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2 mb-8">
-                <TabsTrigger value="account">Account</TabsTrigger>
-                <TabsTrigger value="projects">Projects</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="account">
-                <ProfileForm user={user} />
-              </TabsContent>
-              
-              <TabsContent value="projects">
-                <ProjectsList projects={[]} />
-              </TabsContent>
-            </Tabs>
-          ) : (
-            <div className="text-center py-10">
-              <p>Please sign in to view your profile.</p>
+      <main id="main-content" className="page-width max-w-3xl flex-1 py-12">
+        <p className="eyebrow mb-3">A space of your own</p>
+        <h1 className="editorial-title mb-8 text-4xl">Your account.</h1>
+        {loading ? (
+          <Loader2 className="animate-spin" aria-label="Loading account" />
+        ) : user ? (
+          <div className="studio-panel space-y-8 p-6 sm:p-8">
+            <ProfileForm user={user} />
+            <div className="border-t pt-6">
+              <label
+                htmlFor="account-theme"
+                className="mb-3 block text-sm font-semibold"
+              >
+                Appearance
+              </label>
+              <select
+                id="account-theme"
+                value={theme}
+                onChange={(event) =>
+                  setTheme(event.target.value as "light" | "dark" | "system")
+                }
+                className="studio-input"
+              >
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="system">Match device</option>
+              </select>
             </div>
-          )}
-        </div>
+            {user.app_metadata?.role === "admin" && (
+              <Button asChild variant="outline">
+                <Link to="/admin/furniture">Manage furniture resources</Link>
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="studio-panel p-8">
+            <p className="mb-5 text-sm text-muted-foreground">
+              Sign in to manage your profile and preferences.
+            </p>
+            <Button asChild>
+              <Link to="/auth?next=/profile">Sign in</Link>
+            </Button>
+          </div>
+        )}
       </main>
-      
       <Footer />
     </div>
   );
-};
-
-export default Profile;
+}

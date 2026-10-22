@@ -1,28 +1,33 @@
-
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Eye, EyeOff } from 'lucide-react';
+import { useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Eye, EyeOff } from "lucide-react";
 
 const SignInForm = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const { signIn } = useAuth();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     try {
       await signIn(email, password);
-      navigate('/');
+      const next = params.get("next") || "/";
+      navigate(
+        next.startsWith("/") && !next.startsWith("//") && !next.includes("\\")
+          ? next
+          : "/",
+      );
     } catch (error) {
       // Error is handled in the signIn function
     } finally {
@@ -44,6 +49,7 @@ const SignInForm = () => {
           placeholder="your@email.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
           required
         />
       </div>
@@ -54,7 +60,7 @@ const SignInForm = () => {
             type="button"
             variant="link"
             className="px-0 font-normal h-auto"
-            onClick={() => navigate('/reset-password')}
+            onClick={() => navigate("/reset-password")}
           >
             Forgot password?
           </Button>
@@ -66,12 +72,14 @@ const SignInForm = () => {
             placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
             required
           />
           <Button
             type="button"
             variant="ghost"
             size="icon"
+            aria-label={showPassword ? "Hide password" : "Show password"}
             onClick={toggleShowPassword}
             className="absolute right-0 top-0"
           >
@@ -84,7 +92,7 @@ const SignInForm = () => {
         </div>
       </div>
       <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? 'Signing in...' : 'Sign In'}
+        {isLoading ? "Signing in..." : "Sign In"}
       </Button>
     </form>
   );

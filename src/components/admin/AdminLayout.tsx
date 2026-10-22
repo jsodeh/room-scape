@@ -1,10 +1,9 @@
-
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
-import { Separator } from '@/components/ui/separator';
-import { Button } from '@/components/ui/button';
-import { Shield } from 'lucide-react';
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { Shield } from "lucide-react";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -15,8 +14,8 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Simple admin check - in a real app, you'd have a proper role-based system
-  const isAdmin = !!user;
+  // Match the trusted application role; database policies must enforce access too.
+  const isAdmin = user?.app_metadata?.role === "admin";
 
   if (!isAdmin) {
     return (
@@ -26,7 +25,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
         <p className="text-muted-foreground mb-6 text-center max-w-md">
           You need to be logged in as an administrator to access this page.
         </p>
-        <Button onClick={() => navigate('/auth')}>Sign In</Button>
+        <Button onClick={() => navigate("/auth")}>Sign In</Button>
       </div>
     );
   }
