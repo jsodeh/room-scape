@@ -71,13 +71,19 @@ Make sure you have the following installed on your machine:
    npm ci
    ```
 
-3. **Start the development server**:
+3. **Configure the frontend**:
+   ```bash
+   cp .env.example .env.local
+   ```
+   Fill `VITE_SUPABASE_ANON_KEY` in `.env.local` with the new project's public API key.
+
+4. **Start the development server**:
    ```bash
    npm run dev
    ```
    Open your browser and navigate to `http://localhost:8080`.
 
-No `.env` file is required to view the studio. The active frontend uses the checked-in public Supabase configuration in `src/integrations/supabase/client.ts`. Signing in, loading saved projects, reference analysis, and generation depend on that backend being available and configured. Connecting a different backend requires updating that generated client configuration; the `VITE_SUPABASE_*` variables read by the separate legacy client in `src/lib/supabase.ts` do not configure the active application client.
+Copy `.env.example` to `.env.local`, then fill `VITE_SUPABASE_ANON_KEY` with the public API key for project `fkptdunoizrlkqwdmcyi`. The active client reads these environment variables; the old project's key and URL are no longer used. See [the deployment and environment-variable inventory](docs/SUPABASE_DEPLOYMENT.md) for database migrations, Edge Functions, provider secrets, and Vercel configuration. The new public key must also be set in Vercel before deploying this branch.
 
 ---
 
@@ -95,7 +101,7 @@ RoomScape relies on Supabase Edge Functions to safely interact with Google Gemin
    Get your project reference ID from your Supabase Dashboard settings and run:
 
    ```bash
-   supabase link --project-ref your-project-ref-id
+   supabase link --project-ref fkptdunoizrlkqwdmcyi
    ```
 
 3. **Set Secrets for Edge Functions**:

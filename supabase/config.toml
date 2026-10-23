@@ -1,1 +1,7 @@
-project_id = "vcaasesxoofgycuxvwvu"
+project_id = "fkptdunoizrlkqwdmcyi"
+
+[functions.generate-staged-room]
+verify_jwt = true
+
+[functions.gemini-analyzer]
+verify_jwt = true

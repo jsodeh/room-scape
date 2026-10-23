@@ -1,8 +1,9 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { corsHeaders } from "../_shared/cors.ts"
+import { HttpError, requireUser, requireOwnedAsset, fetchAsset } from "../_shared/security.ts"
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent"
+const GEMINI_MODEL = Deno.env.get('GEMINI_ANALYSIS_MODEL') || 'gemini-2.5-flash'
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
 
 interface AnalysisRequest {
   imageUrl: string;
@@ -18,16 +19,10 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders })
   }
 
-  // Check if API key is available
-  if (!GEMINI_API_KEY) {
-    console.error('Gemini API key not found')
-    return new Response(
-      JSON.stringify({ success: false, error: 'Gemini API key not found' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
-  }
-
   try {
+    if (req.method !== 'POST') throw new HttpError(405, 'Use POST for analysis.')
+    const user = await requireUser(req)
+    if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY is not configured.')
     console.log('Request received:', req.url)
     
     const requestData = await req.json() as AnalysisRequest
@@ -35,6 +30,8 @@ Deno.serve(async (req) => {
 
     const { imageUrl, imageUrls, pdfUrl, prompt, mode } = requestData
     const targetImageUrl = imageUrl || (imageUrls && imageUrls[0]) || pdfUrl
+    requireOwnedAsset(targetImageUrl, user.id)
+    if (mode === 'pdf' && user.app_metadata?.role !== 'admin') throw new HttpError(403, 'PDF analysis requires an administrator.')
 
     if (!targetImageUrl) {
       console.error('Image URL is missing')
@@ -48,7 +45,8 @@ Deno.serve(async (req) => {
 
     // Fetch the image
     console.log('Fetching image data...')
-    const imageData = await fetchImageAsBase64(targetImageUrl)
+    const { data: imageBuffer, contentType } = await fetchAsset(targetImageUrl, mode === 'pdf')
+    const imageData = encodeBase64(imageBuffer)
     if (!imageData) {
       console.error('Failed to fetch image data')
       throw new Error('Failed to fetch image data')
@@ -66,32 +64,33 @@ Deno.serve(async (req) => {
             { text: geminiPrompt },
             {
               inline_data: {
-                mime_type: 'image/jpeg',
+                mime_type: contentType,
                 data: imageData
               }
             }
           ]
         }
       ],
-      generation_config: {
+      generationConfig: {
         temperature: 0.4,
-        top_k: 32,
-        top_p: 1,
-        max_output_tokens: 2048,
-        response_modalities: ["text"]
+        topK: 32,
+        topP: 1,
+        maxOutputTokens: 2048,
+        responseModalities: ["TEXT"]
       }
     }
 
     console.log("Sending request to Gemini API")
     
     // Make the request to Gemini API
-    const apiUrl = `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`
-    const response = await fetch(apiUrl, {
+    const response = await fetch(GEMINI_API_URL, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'x-goog-api-key': GEMINI_API_KEY,
       },
-      body: JSON.stringify(geminiRequest)
+      body: JSON.stringify(geminiRequest),
+      signal: AbortSignal.timeout(90000),
     })
 
     const data = await response.json()
@@ -99,7 +98,7 @@ Deno.serve(async (req) => {
     if (!response.ok) {
       console.error("Gemini API error:", data)
       return new Response(
-        JSON.stringify({ success: false, error: data.error?.message || 'Failed to analyze image with Gemini API' }),
+        JSON.stringify({ success: false, error: 'The analysis provider could not complete this request.' }),
         { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -122,8 +121,8 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('Error analyzing image:', error)
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ success: false, error: error instanceof HttpError ? error.message : 'The reference could not be analysed. Please try again.' }),
+      { status: error instanceof HttpError ? error.status : 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 })
@@ -172,43 +171,11 @@ ${basePrompt}`.trim()
   return `You are an expert in design analysis. Please analyze this image in detail and describe what you see, focusing on design elements, style, and notable features. ${basePrompt}`.trim()
 }
 
-// Helper function to fetch an image and convert it to base64 - Fixed to handle large images
-async function fetchImageAsBase64(url: string): Promise<string | null> {
-  try {
-    console.log(`Fetching image from URL: ${url}`)
-    const response = await fetch(url)
-    
-    if (!response.ok) {
-      console.error(`Failed to fetch image from ${url}: ${response.status}`)
-      return null
-    }
-    
-    const imageBuffer = await response.arrayBuffer()
-    console.log(`Image fetched, size: ${imageBuffer.byteLength} bytes`)
-    
-    // Check if image is too large (above 2MB)
-    const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB
-    if (imageBuffer.byteLength > MAX_IMAGE_SIZE) {
-      console.log(`Image size exceeds 2MB, compressing or resizing recommended`)
-    }
-    
-    // Convert buffer to base64 in a safer way without recursion
-    let binary = '';
-    const bytes = new Uint8Array(imageBuffer);
-    const len = bytes.byteLength;
-    
-    // Process the array in chunks to avoid stack overflow
-    const CHUNK_SIZE = 1024;
-    for (let i = 0; i < len; i += CHUNK_SIZE) {
-      const chunk = bytes.slice(i, Math.min(i + CHUNK_SIZE, len));
-      chunk.forEach(b => binary += String.fromCharCode(b));
-    }
-    
-    return btoa(binary);
-  } catch (error) {
-    console.error(`Error fetching image from ${url}:`, error)
-    return null
-  }
+// Encode in bounded chunks; fetchAsset enforces the download limit.
+function encodeBase64(data: ArrayBuffer): string {
+  let binary = '';
+  for (const byte of new Uint8Array(data)) binary += String.fromCharCode(byte);
+  return btoa(binary);
 }
 
 // Helper function to extract staging instructions from the analysis

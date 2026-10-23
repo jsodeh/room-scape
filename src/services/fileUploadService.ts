@@ -10,9 +10,11 @@ export const uploadFile = async (
   if (!file) return null;
 
   try {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) throw new Error('Sign in before uploading a file.');
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-    const filePath = `${folder}/${fileName}`;
+    const filePath = `${user.id}/${folder}/${fileName}`;
     
     const { data, error } = await supabase.storage
       .from(bucket)

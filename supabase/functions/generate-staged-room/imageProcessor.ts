@@ -1,17 +1,12 @@
 
 import { supabase } from "./supabaseClient.ts";
 import { arrayBufferToBase64 } from "./utils.ts";
+import { fetchAsset } from "../_shared/security.ts";
 
 // Helper function to fetch images
 export async function fetchImage(imageUrl: string, type: string): Promise<ArrayBuffer> {
   console.log(`Fetching ${type} image...`);
-  const imageResponse = await fetch(imageUrl);
-  if (!imageResponse.ok) {
-    const errorMsg = `Failed to fetch ${type} image: ${imageResponse.status} ${imageResponse.statusText}`;
-    console.error(errorMsg);
-    throw new Error(errorMsg);
-  }
-  const imageData = await imageResponse.arrayBuffer();
+  const { data: imageData } = await fetchAsset(imageUrl);
   console.log(`${type} image fetched successfully, size:`, imageData.byteLength);
   return imageData;
 }
@@ -22,6 +17,9 @@ export async function processAndSaveResultImages(
   projectId: string
 ): Promise<string[]> {
   const stagedImages = [];
+  const { data: project, error: projectError } = await supabase.from('staging_projects')
+    .select('user_id').eq('id', projectId).single();
+  if (projectError || !project) throw new Error('Project owner could not be resolved.');
   
   console.log(`Processing ${artifacts.length} image artifacts`);
   
@@ -51,7 +49,7 @@ export async function processAndSaveResultImages(
       // Generate a unique filename
       const timestamp = new Date().getTime();
       const fileName = `staged-${projectId}-${timestamp}-${i}.png`;
-      const filePath = `staged-images/${fileName}`;
+      const filePath = `${project.user_id}/staged-images/${fileName}`;
       
       console.log(`Uploading image to Supabase Storage: ${filePath}`);
       

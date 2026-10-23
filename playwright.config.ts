@@ -18,5 +18,9 @@ export default defineConfig({
     command: "npm run dev -- --host 127.0.0.1 --port 4173",
     url: "http://127.0.0.1:4173",
     reuseExistingServer: !process.env.CI,
+    env: {
+      VITE_SUPABASE_URL: "https://fkptdunoizrlkqwdmcyi.supabase.co",
+      VITE_SUPABASE_ANON_KEY: "test-only-public-key",
+    },
   },
 });
