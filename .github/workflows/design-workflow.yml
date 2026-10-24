@@ -1,0 +1,49 @@
+name: Roomscape validation
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VITE_SUPABASE_URL: https://fkptdunoizrlkqwdmcyi.supabase.co
+      VITE_SUPABASE_ANON_KEY: test-only-public-key
+      VITE_WORKSPACE_V2: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.6
+      - run: npm ci
+      - run: npm run typecheck && npm run build
+      - name: Validate workflow code
+        run: npx eslint src/components/studio/DesignWorkspace.tsx src/components/studio/WorkspaceReferences.tsx src/components/studio/WorkspaceProfiles.tsx src/services/designService.ts supabase/functions/_shared/design supabase/functions/design-api supabase/functions/design-worker tests/backend/workflow_test.ts tests/backend/worker_test.ts tests/backend/provider_errors_test.ts tests/workspace/workspace.spec.ts
+      - name: Check edge functions and backend contracts
+        run: |
+          deno check --config supabase/functions/deno.json supabase/functions/design-api/index.ts supabase/functions/design-worker/index.ts supabase/functions/generate-staged-room/index.ts supabase/functions/gemini-analyzer/index.ts
+          deno test --config supabase/functions/deno.json --allow-env --allow-read --allow-net tests/backend/security_test.ts tests/backend/workflow_test.ts tests/backend/worker_test.ts tests/backend/provider_errors_test.ts
+          python3 -m unittest discover -s tests/backend -p 'test_*.py'
+      - name: Test PostgreSQL constraints and ownership
+        run: |
+          bash tests/backend/run-database-tests.sh
+          bash tests/backend/run-workflow-tests.sh
+      - run: npx playwright install --with-deps chromium
+      - name: Test existing studio and persistent workspace
+        run: |
+          npm run test:e2e
+          npx playwright test --config playwright.workspace.config.ts
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-test-failures
+          path: test-results
+          retention-days: 7

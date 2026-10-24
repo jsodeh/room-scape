@@ -4,6 +4,7 @@ import { supabase, geminiApiKey } from "./supabaseClient.ts";
 import { arrayBufferToBase64 } from "./utils.ts";
 import { updateProjectStatus } from "./projectManager.ts";
 import { processAndSaveResultImages } from "./imageProcessor.ts";
+import { inspectImage } from "../_shared/design/images.ts";
 
 // Gemini API configuration
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta";
@@ -47,7 +48,7 @@ The staged room should look professional and maintain the original room structur
             },
             {
               inline_data: {
-                mime_type: "image/jpeg",
+                mime_type: inspectImage(new Uint8Array(roomImageData)).mimeType,
                 data: base64Image
               }
             }
@@ -88,16 +89,16 @@ The staged room should look professional and maintain the original room structur
     console.log("Gemini API response received");
     
     // Extract images from the response
-    const generatedImages: string[] = [];
+    const generatedImages: { image: string; mimeType?: string }[] = [];
     
     if (data.candidates && data.candidates.length > 0) {
       for (const candidate of data.candidates) {
         if (candidate.content && candidate.content.parts) {
           for (const part of candidate.content.parts) {
             // Check for inline image data
-            if (part.inlineData) {
+            if (part.inlineData && !part.thought) {
               console.log("Found inline image data in response");
-              generatedImages.push(part.inlineData.data);
+              generatedImages.push({ image: part.inlineData.data, mimeType: part.inlineData.mimeType });
             }
           }
         }
@@ -111,7 +112,7 @@ The staged room should look professional and maintain the original room structur
     }
     
     console.log(`Processing ${generatedImages.length} images from Gemini API`);
-    return await processAndSaveResultImages(generatedImages.map(img => ({ image: img })), projectId);
+    return await processAndSaveResultImages(generatedImages, projectId);
   } catch (error) {
     console.error("Error generating staged room with Gemini:", error);
     await updateProjectStatus(projectId, "failed", `Gemini API error: ${error.message}`);

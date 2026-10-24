@@ -150,3 +150,11 @@
     scroll-behavior: auto !important;
   }
 }
+@layer components {
+  .workspace-input {
+    @apply block w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .workspace-label {
+    @apply block space-y-2 text-xs font-medium;
+  }
+}

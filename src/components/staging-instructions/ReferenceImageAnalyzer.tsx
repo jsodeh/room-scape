@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, Lightbulb, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -16,6 +16,8 @@ const ReferenceImageAnalyzer = ({
 }: ReferenceImageAnalyzerProps) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<string | null>(null);
+  const [suggestedInstructions, setSuggestedInstructions] = useState('');
+  useEffect(() => { setAnalysis(null); setSuggestedInstructions(''); }, [referenceImageUrl]);
 
   const analyzeReferenceImage = async () => {
     if (!referenceImageUrl) {
@@ -50,8 +52,8 @@ const ReferenceImageAnalyzer = ({
       setAnalysis(data.analysis);
       
       if (data.generatedInstructions) {
-        onInstructionsGenerated(data.generatedInstructions);
-        toast.success('Staging instructions generated from reference image');
+        setSuggestedInstructions(data.generatedInstructions);
+        toast.success('Reference suggestions are ready to review.');
       }
     } catch (error) {
       console.error('Error analyzing reference image:', error);
@@ -106,6 +108,12 @@ const ReferenceImageAnalyzer = ({
             View Full Analysis
           </Button>
         </div>
+      )}
+      {suggestedInstructions && (
+        <Button type="button" variant="outline" size="sm" onClick={() => {
+          onInstructionsGenerated(suggestedInstructions);
+          toast.success('Reference guidance applied separately from your notes.');
+        }}>Apply reference guidance</Button>
       )}
     </div>
   );

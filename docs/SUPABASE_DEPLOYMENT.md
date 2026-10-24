@@ -1,4 +1,4 @@
-Roomscape uses Supabase project `fkptdunoizrlkqwdmcyi` and frontend https://room-scape-omega.vercel.app . The old project is no longer a runtime fallback.
+Roomscape uses Supabase project `fkptdunoizrlkqwdmcyi` and frontend https://room-scape-omega.vercel.app . The old project is no longer a runtime fallback. This page describes the initial backend and compatibility endpoints. For persistent editing, new models, worker and feature flag, see [Gemini workspace deployment](GEMINI_WORKSPACE_DEPLOYMENT.md).
 
 | Location | Variable | Correct value or source |
 | --- | --- | --- |
@@ -10,10 +10,10 @@ Roomscape uses Supabase project `fkptdunoizrlkqwdmcyi` and frontend https://room
 | Supabase Edge secrets | `STABILITY_API_KEY` | Stability API key, required only when selecting Stability generation. Set directly in Supabase's secrets UI. |
 | Supabase Edge configuration | `IMAGE_PROVIDER` | `gemini` or `stability`. Defaults to Gemini when its key exists, otherwise Stability. Selection is explicit; failed inference is not automatically retried with a second paid provider. |
 | Supabase Edge configuration | `GEMINI_IMAGE_MODEL` | Defaults to `gemini-2.5-flash-image`; select an image-capable model available to your account. Live availability remains unverified. |
-| Supabase Edge configuration | `GEMINI_ANALYSIS_MODEL` | Defaults to `gemini-2.5-flash`; select a supported multimodal analysis model. Live availability remains unverified. |
+| Supabase Edge configuration | `GEMINI_ANALYSIS_MODEL` | Configured/default `gemini-3.1-flash-lite`. Shared by both analysis endpoints; a real hosted workspace analysis passed. |
 | Managed Edge runtime | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | Supabase supplies these for the deployed project. Do not copy service-role credentials to Vercel/Vite frontend variables. |
 
-The frontend public key is intentionally not committed or fabricated. The application requires it at startup, and the build refuses to run when it is absent. Copy `.env.example` to `.env.local` and fill its public-key field for local development. Vercel must receive both frontend variables and rebuild the application before the new connection takes effect.
+The application requires a public client key at startup, and the build refuses to run when it is absent. Copy `.env.example` to `.env.local` and confirm its public key belongs to this project. Only public client configuration can be committed; service-role/provider/management keys remain server-side. Vercel must receive both frontend variables and rebuild before a connection change takes effect.
 
 Deployment from the repository root:
 

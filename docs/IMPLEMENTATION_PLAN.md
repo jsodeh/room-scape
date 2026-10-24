@@ -15,7 +15,9 @@ Turn the staging form into an approachable, image-led design studio while retain
 
 ## Later backend work
 
-The new-project connection, initial schema, ownership/storage policies, and authenticated function deployment are prepared in [the deployment guide](SUPABASE_DEPLOYMENT.md). Local checks do not establish a remote deployment; management access and the new public client key are still required.
+The new Supabase project connection, initial schema, ownership/storage policies, and both authenticated Edge Functions have been deployed and verified. See [the deployment guide](SUPABASE_DEPLOYMENT.md) for configuration. Live AI quality remains a separate validation step.
+
+The next implementation is specified in [the Gemini image workflow and context plan](GEMINI_IMAGE_WORKFLOW_PLAN.md): multi-turn editing, durable versions and branches, purpose-labelled reference photos, structured analysis, and explicit context reuse across projects. That document is a plan; these new workflow features have not yet been implemented.
 
 - Region masking and object-level edits.
 - Consistent staging across multiple camera views.

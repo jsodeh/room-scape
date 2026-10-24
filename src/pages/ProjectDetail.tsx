@@ -103,7 +103,14 @@ export default function ProjectDetail() {
                   Created {new Date(project.created_at).toLocaleDateString()}
                 </p>
               </div>
-              <ProjectStatus status={project.status} />
+              <div className="flex items-center gap-3">
+                <ProjectStatus status={project.status} />
+                {import.meta.env.VITE_WORKSPACE_V2 === "true" && (
+                  <Button asChild>
+                    <Link to={`/?project=${project.id}`}>Continue editing</Link>
+                  </Button>
+                )}
+              </div>
             </div>
             {project.status === "completed" && project.staged_images.length ? (
               <Tabs defaultValue="results">
