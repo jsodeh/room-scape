@@ -5,3 +5,9 @@ verify_jwt = true
 
 [functions.gemini-analyzer]
 verify_jwt = true
+
+[functions.design-api]
+verify_jwt = true
+
+[functions.design-worker]
+verify_jwt = false

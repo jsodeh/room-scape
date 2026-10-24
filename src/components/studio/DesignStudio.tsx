@@ -79,6 +79,7 @@ export default function DesignStudio() {
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [referenceGuidance, setReferenceGuidance] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
   const canvas = useRef<HTMLDivElement>(null);
   const fileRequest = useRef(0);
@@ -87,7 +88,9 @@ export default function DesignStudio() {
   const style = STYLES.find((item) => item.id === settings.style) || STYLES[0];
   const palette =
     PALETTES.find((item) => item.id === settings.palette) || PALETTES[0];
-  const instructions = buildDesignInstructions(settings);
+  const instructions = [buildDesignInstructions(settings), referenceGuidance
+    ? `Reference style guidance only; do not copy the reference room's architecture: ${referenceGuidance}` : ''].filter(Boolean).join('\n');
+  useEffect(() => setReferenceGuidance(''), [photo]);
   const processor = useStagingProcessor({
     userId: user?.id,
     originalImageUrls: state.originalImageUrls,
@@ -501,9 +504,7 @@ export default function DesignStudio() {
                     disabled={busy}
                     onReferenceImageChange={state.handleReferenceImageChange}
                     onReferenceImageUpload={state.handleReferenceImageUpload}
-                    onAnalysisInstructionsGenerated={(notes) =>
-                      update("notes", notes)
-                    }
+                    onAnalysisInstructionsGenerated={setReferenceGuidance}
                   />
                 ) : (
                   <p className="text-[11px] text-muted-foreground">

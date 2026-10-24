@@ -25,7 +25,7 @@ export function requireOwnedAsset(value: string, userId: string): URL {
   let path: string;
   try { path = decodeURIComponent(url.pathname); } catch { throw new HttpError(400, 'Invalid image URL.'); }
   if (url.origin !== base.origin || url.username || url.password || url.hash ||
-      !path.startsWith(`/storage/v1/object/public/room-images/${userId}/`) ||
+      !['room-images', 'design-results'].some(bucket => path.startsWith(`/storage/v1/object/public/${bucket}/${userId}/`)) ||
       path.split('/').includes('..') || path.includes('\\')) {
     throw new HttpError(403, 'Use an image uploaded to your own project storage.');
   }

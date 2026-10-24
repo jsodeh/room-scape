@@ -2,6 +2,7 @@
 import { supabase } from "./supabaseClient.ts";
 import { arrayBufferToBase64 } from "./utils.ts";
 import { fetchAsset } from "../_shared/security.ts";
+import { decodeImage } from "../_shared/design/images.ts";
 
 // Helper function to fetch images
 export async function fetchImage(imageUrl: string, type: string): Promise<ArrayBuffer> {
@@ -13,7 +14,7 @@ export async function fetchImage(imageUrl: string, type: string): Promise<ArrayB
 
 // Process and save generated images from the v2beta API
 export async function processAndSaveResultImages(
-  artifacts: { image: string }[], 
+  artifacts: { image: string; mimeType?: string }[],
   projectId: string
 ): Promise<string[]> {
   const stagedImages = [];
@@ -44,11 +45,12 @@ export async function processAndSaveResultImages(
       }
       
       // Decode base64 image
-      const imageData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+      const decoded = decodeImage(base64Data, typeof artifact === 'object' ? artifact.mimeType : undefined);
+      const imageData = decoded.bytes;
       
       // Generate a unique filename
       const timestamp = new Date().getTime();
-      const fileName = `staged-${projectId}-${timestamp}-${i}.png`;
+      const fileName = `staged-${projectId}-${timestamp}-${i}.${decoded.extension}`;
       const filePath = `${project.user_id}/staged-images/${fileName}`;
       
       console.log(`Uploading image to Supabase Storage: ${filePath}`);
@@ -57,7 +59,7 @@ export async function processAndSaveResultImages(
       const { data, error } = await supabase.storage
         .from("room-images")
         .upload(filePath, imageData, {
-          contentType: "image/png",
+          contentType: decoded.mimeType,
           upsert: true,
         });
       

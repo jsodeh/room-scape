@@ -48,13 +48,13 @@ class ManagementAPI:
         endpoint = "/database/query/read-only" if read_only else "/database/query"
         return self.request(endpoint, "POST", {"query": sql})
 
-    def deploy_function(self, slug):
+    def deploy_function(self, slug, verify_jwt=True):
         base = ROOT / "supabase/functions"
-        paths = sorted((base / slug).glob("*.ts")) + sorted((base / "_shared").glob("*.ts"))
+        paths = sorted((base / slug).rglob("*.ts")) + sorted((base / "_shared").rglob("*.ts"))
         paths += [base / "deno.json", base / "deno.lock"]
         boundary = "roomscape-" + uuid.uuid4().hex
         parts = []
-        metadata = {"entrypoint_path": f"{slug}/index.ts", "name": slug, "verify_jwt": True}
+        metadata = {"entrypoint_path": f"{slug}/index.ts", "name": slug, "verify_jwt": verify_jwt}
         parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="metadata"\r\n\r\n'.encode() + json.dumps(metadata).encode() + b"\r\n")
         for path in paths:
             if not path.is_file():
