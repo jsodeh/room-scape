@@ -2,7 +2,9 @@
 
 The workspace adds saved design directions, immutable image versions, edit snapshots and portable editing context. Only an explicitly chosen, versioned style profile transfers preferences to another project. Supabase remains the source of truth when a model conversation expires.
 
-## Verified deployment and remaining gate
+## Verified deployment and deferred live checks
+
+On 24 October 2026, the owner approved finalizing PR #3 and enabling the production workspace despite the external image-generation quota block. Successful image output and live multi-turn quality remain unverified follow-up work. This decision changes the rollout gate; it does not establish that generation works or change Google billing/quota settings.
 
 Target: Supabase `fkptdunoizrlkqwdmcyi`. The five additive `20261024` migrations, `design-api`, `design-worker` and the two compatibility functions are deployed. A verified `roomscape-design-worker` cron job wakes the private worker every minute. Submission also requests an immediate wake-up through `pg_net`.
 
@@ -21,14 +23,14 @@ Reference analysis has a separate verified repair: the former `gemini-2.5-flash`
 
 The owner requested the separate Nano Banana 2 Lite option after confirming free-tier billing. Its catalog visibility is verified. Controlled Lite requests through Interactions and the explicit generateContent adapter both returned 429. The generateContent response named free-tier input-token/minute, request/minute and request/day limits and suggested a retry delay of approximately 15 hours. Numeric quota allocations/usage were not returned. A successful free-tier image has **not** been verified; check the owner's AI Studio quota view to distinguish exhausted allowance from an unavailable allocation. No follow-up edit was dispatched after the initial render failed.
 
-Inspect the Google Cloud project owning this AI Studio key: usage/rate limits, billing/paid-tier status and the selected model's quota. Google's [rate-limit](https://ai.google.dev/gemini-api/docs/rate-limits) and [billing](https://ai.google.dev/gemini-api/docs/billing) guides describe those controls. Successful images, live continuation, actual resolution/latency, reference fidelity and a Pro/2.1 quality comparison remain acceptance gates. Production rollout stays disabled until those pass.
+Inspect the Google Cloud project owning this AI Studio key: usage/rate limits, billing/paid-tier status and the selected model's quota. Google's [rate-limit](https://ai.google.dev/gemini-api/docs/rate-limits) and [billing](https://ai.google.dev/gemini-api/docs/billing) guides describe those controls. Google AI Pro family membership is a consumer subscription; Gemini API billing and quota for the key's Cloud project are separate. Successful images, live continuation, actual resolution/latency, reference fidelity and a Pro/2.1 quality comparison remain deferred acceptance checks under the owner's release decision.
 
 ## Environment inventory
 
 | Location | Variable | Purpose/default |
 | --- | --- | --- |
 | Vercel Preview/local | `VITE_WORKSPACE_V2` | `true` enables the workspace; unset/`false` retains the existing studio. Enable the implementation branch Preview first. |
-| Vercel Production | `VITE_WORKSPACE_V2` | Keep unset/`false` until live acceptance; changing a Vite variable requires a deployment. |
+| Vercel Production | `VITE_WORKSPACE_V2` | Set `true` for the owner-approved rollout; unset/`false` rolls back the UI. Changing a Vite variable requires a deployment. |
 | Vercel/local | `VITE_SUPABASE_URL` | `https://fkptdunoizrlkqwdmcyi.supabase.co` |
 | Vercel/local | `VITE_SUPABASE_ANON_KEY` | This project's public client key; already set for Production and Preview. |
 | Supabase Edge secret | `GEMINI_API_KEY` | Existing AI Studio key, never exported to Vite or evaluation reports. |
@@ -91,4 +93,6 @@ The live evaluator uses the repository's synthetic room fixture. It attempts Pro
 
 Local PostgreSQL 17 tests exercise real constraints/RLS with Auth/Storage stand-ins. Browser/backend fixtures verify behavior/wire contracts, not live image quality. The hosted smoke establishes deployed API/database connectivity separately.
 
-Validate the feature-branch Preview and exact commit, then complete live acceptance. Merge the reviewed PR before enabling `VITE_WORKSPACE_V2=true` in Production and redeploying. Roll back by setting it to `false` and redeploying; preserve all additive tables/assets/jobs. Compatibility result fields keep saved workspace results viewable, while full version editing requires re-enabling the workspace. UI rollback, disabling the worker and deleting provider conversations are separate operations.
+Verify the final PR head's CI and Vercel Preview checks before merging. Under the owner's 24 October release decision, merge PR #3 and deploy the merged main commit with `VITE_WORKSPACE_V2=true` in Production, without making further quota-blocked generation attempts. Verify the production deployment's exact commit, compiled flag and browser loading; do not describe those checks as live image acceptance. When quota becomes available, use the bounded two-turn evaluation above and review the actual output before closing the deferred checks.
+
+Roll back by setting `VITE_WORKSPACE_V2=false` in Production and redeploying; preserve all additive tables/assets/jobs. Compatibility result fields keep saved workspace results viewable, while full version editing requires re-enabling the workspace. UI rollback, disabling the worker and deleting provider conversations are separate operations.
