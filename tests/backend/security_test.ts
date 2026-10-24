@@ -8,6 +8,26 @@ Deno.env.set('SUPABASE_SERVICE_ROLE_KEY', 'test-only-service-key');
 Deno.env.set('GEMINI_API_KEY', 'test-only-provider-key');
 const { handleStagingRequest } = await import('../../supabase/functions/generate-staged-room/handlers.ts');
 const originalFetch = globalThis.fetch;
+Deno.test('legacy refinement sends the owned saved PNG canvas with its actual MIME type', async () => {
+  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j3ioAAAAASUVORK5CYII=';
+  const saved = image.replace('photo.jpg', 'saved.png');
+  let providerCalls = 0;
+  globalThis.fetch = async (input, init) => {
+    const req = new Request(input, init), url = new URL(req.url);
+    if (url.pathname === '/auth/v1/user') return Response.json({ id: user });
+    if (url.pathname === '/rest/v1/staging_projects') return Response.json({ id: project, user_id: user, original_images: [image], staged_images: [saved], workflow_version: 1 });
+    if (req.url === saved) return new Response(Uint8Array.from(atob(png), c => c.charCodeAt(0)), { headers: { 'content-type': 'image/png' } });
+    if (url.hostname === 'generativelanguage.googleapis.com') {
+      providerCalls++; const body = await req.json();
+      assert(body.contents[0].parts[1].inline_data.mime_type === 'image/png');
+      return Response.json({ candidates: [{ content: { parts: [{ inlineData: { data: png, mimeType: 'image/png' } }] } }] });
+    }
+    if (url.pathname.startsWith('/storage/v1/object/room-images/')) return Response.json({ Key: url.pathname });
+    throw new Error('Unexpected storage or inference access');
+  };
+  try { assert((await handleStagingRequest(request(saved))).status === 200); assert(providerCalls === 1); }
+  finally { globalThis.fetch = originalFetch; }
+});
 function assert(value: unknown, message = 'Assertion failed'): asserts value { if (!value) throw new Error(message); }
 async function expectStatus(action: () => unknown, status: number) {
   try { await action(); } catch (error) {

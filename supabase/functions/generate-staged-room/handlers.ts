@@ -30,10 +30,12 @@ export async function handleStagingRequest(req: Request) {
       throw new HttpError(400, 'Provide a design brief of at most 10,000 characters.');
     requireOwnedAsset(roomImageUrl, user.id);
     const { data: project, error: projectError } = await supabase.from('staging_projects')
-      .select('id, user_id, original_images').eq('id', projectId).eq('user_id', user.id).maybeSingle();
+      .select('id, user_id, original_images, staged_images, workflow_version').eq('id', projectId).eq('user_id', user.id).maybeSingle();
     if (projectError) throw projectError;
     if (!project) throw new HttpError(404, 'Project not found.');
-    if (!project.original_images.includes(roomImageUrl)) throw new HttpError(403, "Use this project's original room image.");
+    if (project.workflow_version === 2) throw new HttpError(409, 'Open this saved room in the design workspace to continue its version history.');
+    if (![...(project.original_images || []), ...(project.staged_images || [])].includes(roomImageUrl))
+      throw new HttpError(403, "Use an original or saved design from this project.");
     if (!geminiApiKey && !stabilityApiKey) throw new HttpError(503, 'Image generation is not configured yet.');
     const { data: claimed, error: claimError } = await supabase.from('staging_projects')
       .update({ status: 'processing', error_message: null }).eq('id', projectId).eq('user_id', user.id)
