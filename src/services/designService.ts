@@ -8,6 +8,13 @@ export async function designRequest<T>(
     body: { ...body, action },
   });
   if (error) {
+    if (error.name === "FunctionsFetchError") {
+      throw new Error(
+        typeof navigator !== "undefined" && !navigator.onLine
+          ? "You're offline. Reconnect, then refresh to check whether your request was saved before submitting again."
+          : "The connection to Roomscape was interrupted. Refresh to check whether your request was saved before submitting again.",
+      );
+    }
     let message = error.message;
     if ("context" in error && error.context instanceof Response) {
       try {

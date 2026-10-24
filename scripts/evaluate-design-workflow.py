@@ -26,7 +26,13 @@ BASE = 'https://' + deploy.PROJECT + '.supabase.co'
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--generate', action='store_true')
+    image_mode = parser.add_mutually_exclusive_group()
+    image_mode.add_argument('--generate', action='store_true', help='Pro generation/refinement and a Nano Banana 2.1 comparison.')
+    parser.add_argument('--analyze', action='store_true', help='One explicit hosted analysis of the synthetic reference; no image-generation request.')
+    image_mode.add_argument('--single-generation', action='store_true', help='One request only, including allowlisted provider diagnostics if it fails.')
+    image_mode.add_argument('--two-turn', action='store_true', help='One generation and one explicit follow-up edit with the selected model.')
+    parser.add_argument('--quality', choices=['lite','quality','next','fast'], default='quality')
+    parser.add_argument('--turn-delay-seconds', type=int, choices=range(61), default=0)
     parser.add_argument('--output', type=Path, default=Path('/tmp/roomscape-evaluation'))
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
@@ -52,7 +58,11 @@ def main():
             # Surface only application messages, never raw auth/provider responses.
             detail = ''
             if path == '/functions/v1/design-api':
-                try: detail = ': ' + json.loads(error.read()).get('error', '')
+                try:
+                    response = json.loads(error.read())
+                    detail = ': ' + response.get('error', '')
+                    report['last_api_failure'] = {k: response.get(k) for k in ['error_code', 'provider_status', 'retry_after_seconds', 'request_id']}
+                    report['last_api_failure']['http_status'] = error.code
                 except (ValueError, AttributeError): pass
             raise RuntimeError(f'Hosted check returned HTTP {error.code} at {path.split("?")[0]}{detail}') from None
         except urllib.error.URLError:
@@ -93,32 +103,47 @@ def main():
         profile = api('save-profile', projectId=project_id, branchId=branch['id'], name='Temporary style', guidance='Natural oak and soft linen.', includeReferences=False)
         assert any(p['latest_version_id'] == profile['versionId'] for p in api('profiles')['profiles'])
         report['checks'].append('reference attachment/removal and immutable style profile')
-        if args.generate:
+        if args.analyze:
+            report['analysis_attempts'] = 1
+            analysis = api('analyze', projectId=project_id, assetId=reference['id'], role='furniture')['analysis']
+            assert analysis['role'] == 'furniture'
+            report['checks'].append('hosted structured reference analysis')
+        if args.generate or args.single_generation or args.two_turn:
             def render(quality, base, instruction):
                 history = api('history', projectId=project_id)
                 current = next(b for b in history['branches'] if b['id'] == branch['id'])
-                edit_input = {'projectId': project_id, 'branchId': current['id'], 'baseVersionId': base, 'contextRevision': current['context_revision'], 'userEdit': instruction, 'scope': 'branch', 'operation': 'generate' if base == root else 'refine', 'quality': quality, 'imageSize': '2K', 'idempotencyKey': str(uuid.uuid4())}
+                edit_input = {'projectId': project_id, 'branchId': current['id'], 'baseVersionId': base, 'contextRevision': current['context_revision'], 'userEdit': instruction, 'scope': 'branch', 'operation': 'generate' if base == root else 'refine', 'quality': quality, 'imageSize': '1K' if quality == 'lite' else '2K', 'idempotencyKey': str(uuid.uuid4())}
                 start = time.monotonic(); job = api('submit', input=edit_input)['job']; report['generation_attempts'] += 1
                 assert api('submit', input=edit_input)['job']['id'] == job['id']
                 for _ in range(90):
                     job = api('job', jobId=job['id'])['job']
                     if job['status'] not in ('queued', 'running', 'saving'): break
                     time.sleep(2)
-                if job['status'] != 'succeeded': raise RuntimeError(f"Generation ended as {job['status']}: {job.get('error_message')}")
+                if job['status'] != 'succeeded':
+                    detail = management.query("select provider_error from public.design_jobs where id='" + str(uuid.UUID(job['id'])) + "'")
+                    report['generation_failure'] = {'preset': quality, 'provider': detail[0]['provider_error'] if detail else None}
+                    raise RuntimeError(f"Generation ended as {job['status']}: {job.get('error_message')}")
                 history = api('history', projectId=project_id)
                 version = next(v for v in history['versions'] if v['id'] == job['result_version_ids'][0])
                 asset = next(a for a in history['assets'] if a['id'] == version['asset_id'])
-                with urllib.request.urlopen(asset['url'], timeout=30) as r: (args.output / f'{quality}-{report["generation_attempts"]}.jpg').write_bytes(r.read())
+                extension = {'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[asset['mime_type']]
+                with urllib.request.urlopen(asset['url'], timeout=30) as r: (args.output / f'{quality}-{report["generation_attempts"]}.{extension}').write_bytes(r.read())
                 report['renders'].append({'preset': quality, 'configured_model': version['model'], 'returned_model': version.get('returned_model'), 'width': asset['width'], 'height': asset['height'], 'mime': asset['mime_type'], 'seconds': round(time.monotonic() - start, 1)})
                 report['checks'].append('idempotent generation ' + str(report['generation_attempts']))
                 return version['id']
 
             brief = 'Create a calm warm living room with soft cream seating, a natural oak coffee table and a muted sage rug. Keep the architecture and viewpoint exactly as in the photograph.'
-            first = render('quality', root, brief)
-            render('quality', first, 'Change only the rug to muted terracotta. Keep all other furnishing, windows and viewpoint unchanged.')
-            fork = api('fork', projectId=project_id, versionId=root, name='Temporary comparison')['branch']
-            branch = fork
-            render('next', root, brief)
+            first = render('quality' if args.generate else args.quality, root, brief)
+            print(json.dumps({'first_render_saved': True, 'preset': 'quality' if args.generate else args.quality}), flush=True)
+            if args.two_turn:
+                for _ in range(args.turn_delay_seconds):
+                    time.sleep(1)
+                render(args.quality, first, 'Change only the rug to muted terracotta. Keep all other furnishing, windows and viewpoint unchanged.')
+            elif args.generate:
+                render('quality', first, 'Change only the rug to muted terracotta. Keep all other furnishing, windows and viewpoint unchanged.')
+                fork = api('fork', projectId=project_id, versionId=root, name='Temporary comparison')['branch']
+                branch = fork
+                render('next', root, brief)
             rows = management.query("select max((state->>'turns')::int) as turns from public.design_provider_states where user_id='" + user_id + "'")
             report['max_provider_turns'] = rows[0]['turns']
         print(json.dumps({k: v for k, v in report.items() if k != 'cleanup'}), flush=True)

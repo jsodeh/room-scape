@@ -1,5 +1,5 @@
 import { corsHeaders } from "../_shared/cors.ts";
-import { modelCatalog } from "../_shared/design/provider.ts";
+import { analysisModelCatalog } from "../_shared/design/provider.ts";
 import { sha256 } from "../_shared/design/images.ts";
 import { cacheCapabilities, processNextJob } from "../_shared/design/worker.ts";
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void };
@@ -19,6 +19,7 @@ export async function handleWorker(req: Request): Promise<Response> {
     if (body.operation === "models") {
       return Response.json({
         models: await cacheCapabilities(),
+        analysisModels: await analysisModelCatalog(),
         sdk: "@google/genai@2.31.0",
       });
     }

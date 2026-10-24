@@ -44,6 +44,7 @@ import type {
 const active = (job: DesignJob) =>
   ["queued", "running", "saving", "needs_recovery"].includes(job.status);
 const modelLabels: Record<Quality, string> = {
+  lite: "Lite · free-tier 1K",
   quality: "Pro · highest detail",
   next: "Nano Banana 2.1 · newest",
   fast: "Flash · faster iteration",
@@ -363,8 +364,8 @@ function Workbench({
     [selectedId, setSelectedId] = useState(branch.head_version_id),
     [edit, setEdit] = useState(""),
     [scope, setScope] = useState<"branch" | "turn">("branch"),
-    [quality, setQuality] = useState<Quality>("quality"),
-    [size, setSize] = useState<ImageSize>("2K"),
+    [quality, setQuality] = useState<Quality>("lite"),
+    [size, setSize] = useState<ImageSize>("1K"),
     [pending, setPending] = useState(false),
     [expanded, setExpanded] = useState(false),
     [forkOpen, setForkOpen] = useState(false),
@@ -776,9 +777,14 @@ function Workbench({
                 className="workspace-input"
                 disabled={busy}
                 value={quality}
-                onChange={(e) => setQuality(e.target.value as Quality)}
+                onChange={(e) => {
+                  const selected = e.target.value as Quality;
+                  if (selected === "lite") setSize("1K");
+                  else if (quality === "lite") setSize("2K");
+                  setQuality(selected);
+                }}
               >
-                {(["quality", "next", "fast"] as Quality[]).map((q) => (
+                {(["lite", "quality", "next", "fast"] as Quality[]).map((q) => (
                   <option
                     key={q}
                     value={q}
@@ -802,7 +808,9 @@ function Workbench({
                 onChange={(e) => setSize(e.target.value as ImageSize)}
               >
                 {["1K", "2K", "4K"].map((v) => (
-                  <option key={v}>{v}</option>
+                  <option key={v} disabled={quality === "lite" && v !== "1K"}>
+                    {v}
+                  </option>
                 ))}
               </select>
             </label>
@@ -847,7 +855,9 @@ function Workbench({
           )}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="max-w-xs text-[11px] leading-relaxed text-muted-foreground">
-              2K is a good starting point. 4K takes longer and may cost more.
+              {quality === "lite"
+                ? "Lite uses Google’s free-tier quota at 1K and may be rate limited. Choose another model for higher resolution with appropriate Google API quota."
+                : "2K is a good starting point. 4K takes longer and may cost more."}{" "}
               Your selected model is used without automatic substitution.
             </p>
             <Button
@@ -937,9 +947,16 @@ function Workbench({
             </div>
           )}
           {!job && latestJob?.status === "failed" && (
-            <p role="alert" className="mt-4 text-sm text-destructive">
-              {latestJob.error_message}
-            </p>
+            <div
+              role="alert"
+              className="mt-4 space-y-1 text-sm text-destructive"
+            >
+              <p className="text-xs font-medium">
+                Last failed request · {modelLabels[latestJob.quality]} ·{" "}
+                {latestJob.image_size}
+              </p>
+              <p>{latestJob.error_message}</p>
+            </div>
           )}
         </div>
         <div className="studio-panel p-5">

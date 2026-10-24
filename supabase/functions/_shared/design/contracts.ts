@@ -7,7 +7,7 @@ export const REFERENCE_ROLES = [
 ] as const;
 export type ReferenceRole = typeof REFERENCE_ROLES[number];
 export type EditScope = "branch" | "turn";
-export type Quality = "quality" | "next" | "fast";
+export type Quality = "lite" | "quality" | "next" | "fast";
 export type ImageSize = "1K" | "2K" | "4K";
 export interface DesignBrief {
   room: string;

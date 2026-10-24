@@ -8,6 +8,8 @@ import type {
   ReferenceBinding,
 } from "./contracts.ts";
 import { sha256 } from "./images.ts";
+import { workflowAPI } from "./modelConfig.ts";
+import type { WorkflowAPI } from "./modelConfig.ts";
 export const uuid = z.string().uuid();
 export const BriefSchema = z.object({
   room: z.string().min(1).max(80),
@@ -41,10 +43,16 @@ export const SubmitSchema = z.object({
   userEdit: z.string().min(1).max(6000),
   scope: z.enum(["branch", "turn"]),
   operation: z.enum(["generate", "refine", "restyle", "independent"]),
-  quality: z.enum(["quality", "next", "fast"]),
+  quality: z.enum(["lite", "quality", "next", "fast"]),
   imageSize: z.enum(["1K", "2K", "4K"]),
   idempotencyKey: uuid,
-}).strict();
+}).strict().refine(
+  (input) => input.quality !== "lite" || input.imageSize === "1K",
+  {
+    path: ["imageSize"],
+    message: "Lite uses 1K output. Select another model for 2K or 4K.",
+  },
+);
 export const AnalysisSchema = z.object({
   observations: z.object({
     style: z.array(z.string().max(200)).max(8).default([]),
@@ -155,8 +163,10 @@ export async function compileContext(
     quality: Quality;
     model: string;
     imageSize: ImageSize;
+    api?: WorkflowAPI;
   },
 ) {
+  const api = args.api || workflowAPI(args.quality);
   const context = normalizeContext(args.context);
   if (
     context.references.some((r) =>
@@ -223,7 +233,7 @@ export async function compileContext(
       context: resumeContext,
       model: args.model,
       size: args.imageSize,
-      api: Deno.env.get("GEMINI_WORKFLOW_API") || "interactions",
+      api,
     }),
   );
   const following = normalizeContext({
@@ -234,11 +244,12 @@ export async function compileContext(
   });
   return {
     prompt,
+    api,
     roles,
     fingerprint,
     nextContext: following,
     resumeAllowed: args.scope === "branch" &&
       context.references.every((r) => r.scope === "branch"),
-    manifest: resolved,
+    manifest: { ...resolved, requestAPI: api },
   };
 }

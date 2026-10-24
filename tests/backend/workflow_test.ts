@@ -2,6 +2,7 @@ import {
   canonical,
   compileContext,
   normalizeContext,
+  SubmitSchema,
 } from "../../supabase/functions/_shared/design/context.ts";
 import { EMPTY_CONTEXT } from "../../supabase/functions/_shared/design/contracts.ts";
 import type { DesignContext } from "../../supabase/functions/_shared/design/contracts.ts";
@@ -52,6 +53,23 @@ const compile = (c: DesignContext, extra = {}) =>
     imageSize: "2K",
     ...extra,
   });
+Deno.test("free-tier Lite requests are explicit and restricted to documented 1K output", async () => {
+  const input = {
+    projectId: ids[0],
+    branchId: ids[1],
+    baseVersionId: ids[2],
+    contextRevision: 0,
+    userEdit: "Add a cream sofa.",
+    scope: "branch",
+    operation: "generate",
+    quality: "lite",
+    imageSize: "1K",
+    idempotencyKey: ids[3],
+  };
+  assert(SubmitSchema.safeParse(input).success);
+  assert(!SubmitSchema.safeParse({ ...input, imageSize: "2K" }).success);
+  assert(!SubmitSchema.safeParse({ ...input, imageSize: "4K" }).success);
+});
 Deno.test("compiler separates canvas, architecture, project notes and role-specific photographs", async () => {
   const c = context();
   c.brief.notes = "Keep the family painting.";
@@ -376,6 +394,60 @@ Deno.test("anonymous requests and foreign projects cannot reach image providers"
       )).status,
       404,
     );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+Deno.test("Lite uses the explicit generateContent adapter without retrieving an Interactions conversation", async () => {
+  let calls = 0;
+  globalThis.fetch = async (input, init) => {
+    const req = new Request(input, init);
+    calls++;
+    assert(req.method === "POST" && req.url.includes(":generateContent"));
+    const body = await req.json();
+    equal(body.generationConfig.imageConfig.imageSize, "1K");
+    assert(
+      !body.generationConfig.imageConfig.outputMimeType &&
+        !body.previous_interaction_id,
+    );
+    return Response.json({
+      modelVersion: "gemini-3.1-flash-lite-image",
+      candidates: [{
+        finishReason: "STOP",
+        content: {
+          parts: [{ inlineData: { data: png, mimeType: "image/png" } }],
+        },
+      }],
+    });
+  };
+  try {
+    const result = await generateImage({
+      ...args,
+      api: "generateContent",
+      model: "gemini-3.1-flash-lite-image",
+      imageSize: "1K",
+      previous: {
+        interactionId: "must-not-be-read",
+        fingerprint: args.fingerprint,
+        model: "gemini-3.1-flash-lite-image",
+        turns: 1,
+      },
+    });
+    assert(
+      calls === 1 && result.state === null &&
+        result.images[0].mimeType === "image/png",
+    );
+    const compiled = await compile(context(), {
+      quality: "lite",
+      model: "gemini-3.1-flash-lite-image",
+      imageSize: "1K",
+    });
+    assert(
+      compiled.api === "generateContent" &&
+        compiled.manifest.requestAPI === "generateContent",
+    );
+    assert(compiled.nextContext.decisions.length === 1);
   } finally {
     globalThis.fetch = originalFetch;
   }

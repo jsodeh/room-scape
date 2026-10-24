@@ -37,7 +37,14 @@ const session = {
   expires_at: exp,
   expires_in: 36000,
 };
-async function backend(page: Page) {
+async function backend(
+  page: Page,
+  options: {
+    analysisFailure?: boolean;
+    networkFailure?: boolean;
+    failedModel?: string;
+  } = {},
+) {
   const context = structuredClone(EMPTY_CONTEXT);
   context.brief.notes = "Keep the family painting.";
   const root = {
@@ -88,12 +95,25 @@ async function backend(page: Page) {
       },
     ],
     analyses: [],
-    jobs: [],
+    jobs: options.failedModel
+      ? [
+          {
+            id: "failed-job",
+            branch_id: ids[1],
+            status: "failed",
+            quality: options.failedModel,
+            image_size: "2K",
+            error_message:
+              "Google rejected this generation request with HTTP 429.",
+            result_version_ids: [],
+          },
+        ]
+      : [],
     turns: [],
   };
   const calls: {
     action: string;
-    input?: { baseVersionId: string; scope: string };
+    input?: { baseVersionId: string; scope: string; idempotencyKey?: string };
     context?: typeof context;
     versionId?: string;
     profileVersionId?: string;
@@ -127,7 +147,7 @@ async function backend(page: Page) {
       if (body.action === "capabilities")
         return json({
           workerReady: true,
-          models: ["quality", "next", "fast"].map((preset) => ({
+          models: ["lite", "quality", "next", "fast"].map((preset) => ({
             preset,
             available: true,
             model: "fixture",
@@ -203,6 +223,16 @@ async function backend(page: Page) {
         return json({ asset });
       }
       if (body.action === "analyze") {
+        if (options.analysisFailure)
+          return json(
+            {
+              error:
+                "Google rejected this analysis request with HTTP 429 (quota or rate limit). Check the AI Studio project quota and billing. No automatic retry was made.",
+              error_code: "provider_quota",
+              provider_status: 429,
+            },
+            429,
+          );
         const analysis = {
           id: ids[7],
           asset_id: ids[6],
@@ -230,7 +260,10 @@ async function backend(page: Page) {
         state.branches.push(branch);
         return json({ branch });
       }
-      if (body.action === "submit") return json({ job: { id: "job" } });
+      if (body.action === "submit") {
+        if (options.networkFailure) return route.abort("internetdisconnected");
+        return json({ job: { id: "job" } });
+      }
       return json({});
     }
     return json([]);
@@ -387,4 +420,96 @@ test("saved style reuse pins the selected version and requires opt-in reference 
   await expect(
     page.getByRole("textbox", { name: "Style", exact: true }),
   ).toHaveValue("Quiet modern");
+});
+test("failed analysis displays the provider cause and preserves manual room instructions", async ({
+  page,
+}) => {
+  const mock = await backend(page, { analysisFailure: true });
+  await page.goto(`/?project=${ids[0]}`);
+  await page
+    .getByLabel("Room instructions")
+    .fill("My manual notes must remain.");
+  await page
+    .getByLabel("Add reference photograph", { exact: true })
+    .setInputFiles("public/images/studio-room.png");
+  await page.getByRole("button", { name: "Analyse this purpose" }).click();
+  await expect(
+    page.getByText(/Google rejected this analysis request with HTTP 429/),
+  ).toBeVisible();
+  await expect(page.getByLabel("Room instructions")).toHaveValue(
+    "My manual notes must remain.",
+  );
+  expect(mock.state.analyses.length).toBe(0);
+});
+test("network interruption preserves the edit and reuses its action ID on an explicit retry", async ({
+  page,
+}) => {
+  const mock = await backend(page, { networkFailure: true });
+  await page.goto(`/?project=${ids[0]}`);
+  await page.getByLabel("Next edit").fill("Keep everything except the sofa.");
+  await page
+    .getByRole("button", { name: "Generate design", exact: true })
+    .click();
+  await expect(
+    page.getByText(/The connection to Roomscape was interrupted/),
+  ).toBeVisible();
+  await expect(page.getByLabel("Next edit")).toHaveValue(
+    "Keep everything except the sofa.",
+  );
+  expect(mock.calls.filter((c) => c.action === "submit").length).toBe(1);
+  await page
+    .getByRole("button", { name: "Generate design", exact: true })
+    .click();
+  await expect
+    .poll(() => mock.calls.filter((c) => c.action === "submit").length)
+    .toBe(2);
+  const actions = mock.calls.filter((c) => c.action === "submit");
+  expect(actions[0].input.idempotencyKey).toBeTruthy();
+  expect(actions[1].input.idempotencyKey).toBe(actions[0].input.idempotencyKey);
+});
+
+test("a saved generation failure identifies its model independently of the current selector", async ({
+  page,
+}) => {
+  await backend(page, { failedModel: "next" });
+  await page.goto(`/?project=${ids[0]}`);
+  await expect(
+    page.getByRole("combobox", { name: "Generation model" }),
+  ).toHaveValue("lite");
+  await expect(
+    page.getByText(/Last failed request · Nano Banana 2.1/),
+  ).toBeVisible();
+});
+
+test("free-tier Lite is an explicit default with 1K output and premium choices remain selectable", async ({
+  page,
+}) => {
+  const mock = await backend(page);
+  await page.goto(`/?project=${ids[0]}`);
+  await expect(
+    page.getByRole("combobox", { name: "Generation model" }),
+  ).toHaveValue("lite");
+  await expect(page.getByRole("combobox", { name: "Image size" })).toHaveValue(
+    "1K",
+  );
+  await expect(
+    page.getByRole("option", { name: "4K", exact: true }),
+  ).toHaveJSProperty('disabled', true);
+  await page
+    .getByRole("combobox", { name: "Generation model" })
+    .selectOption("quality");
+  await expect(page.getByRole("combobox", { name: "Image size" })).toHaveValue(
+    "2K",
+  );
+  await page.getByRole("combobox", { name: "Image size" }).selectOption("4K");
+  await page
+    .getByRole("combobox", { name: "Generation model" })
+    .selectOption("lite");
+  await page.getByLabel("Next edit").fill("Create a calm room.");
+  await page
+    .getByRole("button", { name: "Generate design", exact: true })
+    .click();
+  await expect
+    .poll(() => mock.calls.find((c) => c.action === "submit")?.input)
+    .toMatchObject({ quality: "lite", imageSize: "1K" });
 });

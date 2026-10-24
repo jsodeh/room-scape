@@ -1,5 +1,9 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import {
+  ProviderFailure,
+  providerHTTPStatus,
+} from "../_shared/design/providerErrors.ts";
+import {
   HttpError,
   requireOwnedAsset,
   requireUser,
@@ -32,6 +36,7 @@ import type {
 import { inspectImage, sha256, stableId } from "../_shared/design/images.ts";
 import { modelCatalog } from "../_shared/design/provider.ts";
 import { analyzeReference } from "../_shared/design/analysis.ts";
+import { analysisModel } from "../_shared/design/modelConfig.ts";
 
 const now = () => new Date().toISOString();
 const id = (value: unknown) => parse(uuid, value);
@@ -645,7 +650,7 @@ async function dispatch(userId: string, body: ActionBody): Promise<unknown> {
         id(body.assetId),
         true,
       );
-      const model = Deno.env.get("GEMINI_ANALYSIS_MODEL") || "gemini-2.5-flash";
+      const model = analysisModel();
       const cached = checked(
         await db.from("design_analyses").select("*").eq("asset_id", asset.id)
           .eq("role", body.role).eq("model", model).eq("schema_version", 1).eq(
@@ -803,6 +808,7 @@ async function dispatch(userId: string, body: ActionBody): Promise<unknown> {
   }
 }
 export async function handleDesignAPI(req: Request) {
+  const requestId = crypto.randomUUID();
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -830,18 +836,39 @@ export async function handleDesignAPI(req: Request) {
       headers: corsHeaders,
     });
   } catch (error) {
-    if (!(error instanceof HttpError)) {
+    if (error instanceof ProviderFailure) {
+      console.warn(
+        "Workspace provider failure",
+        JSON.stringify({
+          requestId,
+          code: error.code,
+          diagnostics: error.diagnostics,
+        }),
+      );
+    } else if (!(error instanceof HttpError)) {
       console.error(
         "Workspace operation failed:",
         error instanceof Error ? error.name : "database/provider",
       );
     }
     return Response.json({
-      error: error instanceof HttpError
+      error: error instanceof HttpError || error instanceof ProviderFailure
         ? error.message
         : "The design operation could not be completed. Your saved designs are still available.",
+      error_code: error instanceof ProviderFailure ? error.code : undefined,
+      provider_status: error instanceof ProviderFailure
+        ? error.diagnostics.httpStatus
+        : undefined,
+      retry_after_seconds: error instanceof ProviderFailure
+        ? error.diagnostics.retryAfterSeconds
+        : undefined,
+      request_id: requestId,
     }, {
-      status: error instanceof HttpError ? error.status : 500,
+      status: error instanceof HttpError
+        ? error.status
+        : error instanceof ProviderFailure
+        ? providerHTTPStatus(error)
+        : 500,
       headers: corsHeaders,
     });
   }

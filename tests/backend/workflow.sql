@@ -54,6 +54,12 @@ begin
   results:=public.design_finish_job(job.id,(claimed->>'claim_token')::uuid,output,ctx,null,false);
   assert (select head_version_id=v from public.design_branches where id=b),'Late render must not replace a changed branch';
   assert (select count(*) from public.design_versions where id=results[1])=1,'Late render must remain reviewable';
+  job.id:=gen_random_uuid();job.idempotency_key:=gen_random_uuid();job.turn_id:=gen_random_uuid();turn.id:=job.turn_id;
+  job.context_revision:=(select context_revision from public.design_branches where id=b);job.quality:='lite';job.model:='gemini-3.1-flash-lite-image';job.image_size:='2K';
+  begin perform public.design_submit_turn(to_jsonb(job),to_jsonb(turn)); raise exception 'Lite high-resolution request accepted'; exception when check_violation then null; end;
+  job.image_size:='1K';perform public.design_submit_turn(to_jsonb(job),to_jsonb(turn));
+  assert (select quality='lite' and image_size='1K' from public.design_jobs where id=job.id);
+  perform public.design_cancel_job(job.id,u);
   begin insert into public.design_reference_links(project_id,asset_id,user_id) values('10000000-0000-4000-8000-000000000002',a,'00000000-0000-4000-8000-000000000002'); raise exception 'Foreign reference accepted'; exception when check_violation then null; end;
 end $$;
 set role authenticated;
@@ -61,6 +67,7 @@ set request.jwt.claim.sub='00000000-0000-4000-8000-000000000002';
 do $$ begin
   assert (select count(*) from public.design_versions)=0,'RLS must hide foreign history';
   begin perform provider_interaction_id from public.design_jobs; raise exception 'Provider IDs leaked'; exception when insufficient_privilege then null; end;
+  begin perform provider_error from public.design_jobs; raise exception 'Private provider diagnostics leaked'; exception when insufficient_privilege then null; end;
   begin perform * from public.design_provider_states; raise exception 'Provider state leaked'; exception when insufficient_privilege then null; end;
   begin perform public.design_claim_job(); raise exception 'Client claimed worker job'; exception when insufficient_privilege then null; end;
   begin insert into public.design_branches(project_id,user_id,name) values('10000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000002','Forged'); raise exception 'Direct client write accepted'; exception when insufficient_privilege then null; end;

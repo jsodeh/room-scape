@@ -56,6 +56,10 @@ export async function processNextJob() {
     );
     const context = normalizeContext(turn.context_snapshot);
     const compiled = await compileContext({
+      api: turn.manifest?.requestAPI === "generateContent" ||
+          turn.manifest?.requestAPI === "interactions"
+        ? turn.manifest.requestAPI
+        : undefined,
       context,
       projectId: project.id,
       branchId: job.branch_id,
@@ -96,6 +100,7 @@ export async function processNextJob() {
       };
     } else {
       result = await generateImage({
+        api: compiled.api,
         model: job.model,
         imageSize: job.image_size,
         prompt: compiled.prompt,
@@ -173,6 +178,9 @@ export async function processNextJob() {
           : uncertain
           ? "The provider may have finished. Recover the output before requesting another generation."
           : "This generation could not be prepared. Your saved versions are unchanged.",
+        provider_error: error instanceof ProviderFailure
+          ? error.diagnostics
+          : null,
         updated_at: new Date().toISOString(),
       }).eq("id", job.id).eq("claim_token", job.claim_token).in("status", [
         "running",

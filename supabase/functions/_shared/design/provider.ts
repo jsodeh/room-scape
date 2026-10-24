@@ -2,8 +2,15 @@ import { GoogleGenAI } from "npm:@google/genai@2.31.0";
 import { HttpError } from "../security.ts";
 import { base64, decodeImage } from "./images.ts";
 import type { ImageSize, ModelCapability, Quality } from "./contracts.ts";
+import {
+  classifyProviderError,
+  ProviderFailure,
+  statusOf,
+} from "./providerErrors.ts";
+export { classifyProviderError, ProviderFailure } from "./providerErrors.ts";
 
 export const CANDIDATES: Record<Quality, string[]> = {
+  lite: ["gemini-3.1-flash-lite-image"],
   quality: ["gemini-3-pro-image", "gemini-3-pro-image-preview"],
   next: ["gemini-nano-banana-2.1"],
   fast: ["gemini-3.1-flash-image", "gemini-3.1-flash-image-preview"],
@@ -28,11 +35,6 @@ export interface ProviderState {
   model: string;
   turns: number;
 }
-export class ProviderFailure extends Error {
-  constructor(public code: string, message: string, public uncertain = false) {
-    super(message);
-  }
-}
 interface WireImage {
   type?: string;
   data?: string;
@@ -52,14 +54,6 @@ interface ImageEnvelope {
       }[];
     };
   }[];
-}
-function statusOf(error: unknown) {
-  const e = error as {
-    status?: number;
-    statusCode?: number;
-    response?: { status?: number };
-  };
-  return Number(e?.status || e?.statusCode || e?.response?.status);
 }
 function client() {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
@@ -94,12 +88,40 @@ export async function modelCatalog(): Promise<ModelCapability[]> {
       model: found || candidates[0],
       available: !!found,
       description: {
+        lite: "Nano Banana 2 Lite · free-tier 1K drafts",
         quality: "Nano Banana Pro · detailed final renders",
         next: "Nano Banana 2.1 · next-generation fidelity",
         fast: "Nano Banana 2 · faster iteration",
       }[preset],
     };
   });
+}
+// Operator-only metadata. This does not run inference or select a fallback.
+export async function analysisModelCatalog() {
+  const models: {
+    model: string;
+    actions: string[];
+    displayName?: string;
+    description?: string;
+  }[] = [];
+  for await (
+    const model of await client().models.list({ config: { pageSize: 1000 } })
+  ) {
+    const name = (model.name || "").replace(/^models\//, "");
+    if (
+      /^gemini-(?:\d+(?:\.\d+)?-(?:flash(?:-lite)?|pro)(?:-preview)?|(?:flash|flash-lite|pro)-latest)$/
+        .test(name) &&
+      model.supportedActions?.includes("generateContent")
+    ) {
+      models.push({
+        model: name,
+        actions: model.supportedActions,
+        displayName: model.displayName,
+        description: model.description,
+      });
+    }
+  }
+  return models;
 }
 export function extractImages(response: unknown) {
   const r = response as ImageEnvelope;
@@ -161,6 +183,7 @@ export async function generateImage(args: {
   images: ProviderInput[];
   previous?: ProviderState;
   fingerprint: string;
+  api?: "interactions" | "generateContent";
   onInteraction?: (id: string) => Promise<void>;
 }) {
   if (
@@ -173,10 +196,13 @@ export async function generateImage(args: {
     );
   }
   const ai = client();
-  const previous = args.previous?.model === args.model &&
+  const mode = args.api || Deno.env.get("GEMINI_WORKFLOW_API") ||
+    "interactions";
+  const previous =
+    mode === "interactions" && args.previous?.model === args.model &&
       args.previous.fingerprint === args.fingerprint && args.previous.turns < 8
-    ? args.previous
-    : undefined;
+      ? args.previous
+      : undefined;
   let interactionId = previous?.interactionId;
   if (interactionId) {
     try {
@@ -202,7 +228,6 @@ export async function generateImage(args: {
       mime_type: image.mimeType,
     });
   }
-  const mode = Deno.env.get("GEMINI_WORKFLOW_API") || "interactions";
   try {
     if (mode === "generateContent") {
       // Fresh portable snapshot: never fabricate an Interactions history for this API.
@@ -297,38 +322,4 @@ export async function deleteInteraction(interactionId: string) {
   } catch (error) {
     if (![404, 410].includes(statusOf(error))) throw error;
   }
-}
-export function classifyProviderError(error: unknown, dispatched: boolean) {
-  const status = statusOf(error);
-  if (status === 429) {
-    return new ProviderFailure(
-      "provider_quota",
-      "Gemini quota or billing needs attention. No automatic generation retry was made.",
-    );
-  }
-  if ([401, 403].includes(status)) {
-    return new ProviderFailure(
-      "provider_access",
-      "The Gemini key is not authorized for this operation. Check its project, API access and billing.",
-    );
-  }
-  if (status === 404) {
-    return new ProviderFailure(
-      "model_unavailable",
-      "The selected Gemini model is unavailable to this project.",
-    );
-  }
-  if (status === 400) {
-    return new ProviderFailure(
-      "provider_request",
-      "The selected model rejected this request format. Your previous image is unchanged.",
-    );
-  }
-  return new ProviderFailure(
-    "provider_outcome_unknown",
-    dispatched
-      ? "Generation was interrupted. Its outcome may be unknown; review before retrying to avoid another charge."
-      : "The provider could not be reached.",
-    dispatched,
-  );
 }
