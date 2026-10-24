@@ -10,12 +10,12 @@ export function handleStabilityResponse(result: any): { image: string }[] {
   // Should contain an "artifacts" array of base64 encoded images
   let artifacts: { image: string }[] = [];
   
-  // Log the full response for debugging
-  console.log("Full Stability API response:", JSON.stringify(result, null, 2));
   
   // Extract images based on the Stability AI v2beta API response format
   // Per docs: should contain an "artifacts" array with base64 encoded images
-  if (result.artifacts && Array.isArray(result.artifacts)) {
+  if (typeof result.image === 'string') {
+    artifacts = [{ image: result.image }];
+  } else if (result.artifacts && Array.isArray(result.artifacts)) {
     console.log("Found artifacts array with length:", result.artifacts.length);
     artifacts = result.artifacts;
   } else if (result.images && Array.isArray(result.images)) {

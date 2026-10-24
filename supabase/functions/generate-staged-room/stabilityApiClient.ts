@@ -7,7 +7,7 @@ import { processAndSaveResultImages } from "./imageProcessor.ts";
 import { stabilityApiKey } from "./supabaseClient.ts";
 
 // API endpoint for Stability Search and Replace
-const STABILITY_API_URL = "https://api.stability.ai/v2beta/searches/replace";
+const STABILITY_API_URL = "https://api.stability.ai/v2beta/stable-image/edit/search-and-replace";
 
 /**
  * Generate a staged room using Stability AI's search-and-replace endpoint
@@ -32,9 +32,11 @@ export async function generateStagedRoomWithStability(
       method: "POST",
       headers: {
         "Authorization": `Bearer ${stabilityApiKey}`,
+        "Accept": "application/json",
         // Don't set Content-Type here as it's automatically set with FormData
       },
-      body: formData
+      body: formData,
+      signal: AbortSignal.timeout(90000),
     });
     
     // Process the response from Stability API

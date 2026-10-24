@@ -21,6 +21,8 @@ const getBucketForFile = (file: File): string => {
 // Upload an image or PDF to Supabase storage
 export const uploadImage = async (file: File, folder?: string): Promise<string | null> => {
   try {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) throw new Error('Sign in before uploading a file.');
     // Use room-images bucket for all images
     const targetBucket = 'room-images';
     
@@ -28,7 +30,7 @@ export const uploadImage = async (file: File, folder?: string): Promise<string |
     const targetFolder = folder || getBucketForFile(file);
     
     const fileName = generateUniqueFileName(file);
-    const filePath = `${targetFolder}/${fileName}`;
+    const filePath = `${user.id}/${targetFolder}/${fileName}`;
     
     console.log(`Uploading to bucket: ${targetBucket}, path: ${filePath}`);
     

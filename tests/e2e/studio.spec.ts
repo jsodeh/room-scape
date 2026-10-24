@@ -4,13 +4,8 @@ import { join } from "node:path";
 
 const photoPath = join(process.cwd(), "public/images/studio-room.png");
 const photo = readFileSync(photoPath);
-const clientSource = readFileSync(
-  join(process.cwd(), "src/integrations/supabase/client.ts"),
-  "utf8",
-);
-const backend = new URL(
-  clientSource.match(/const SUPABASE_URL\s*=\s*['"]([^'"]+)['"]/)![1],
-);
+// Must match the isolated mock backend configured in playwright.config.ts.
+const backend = new URL("https://fkptdunoizrlkqwdmcyi.supabase.co");
 const user = {
   id: "00000000-0000-4000-8000-000000000001",
   email: "studio-test@example.test",

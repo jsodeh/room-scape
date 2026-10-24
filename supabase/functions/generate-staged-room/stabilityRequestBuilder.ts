@@ -33,8 +33,7 @@ export async function prepareStabilityRequest(
   
   // Add standard parameters per Stability AI docs
   formData.append('seed', Math.floor(Math.random() * 2147483647).toString());
-  formData.append('cfg_scale', '7');  // Guidance scale - how strictly to follow the prompt
-  formData.append('samples', '1');    // Number of images to generate
+  formData.append('output_format', 'png');
   
   // More verbose debug info
   console.log("Request parameters:");

@@ -7,7 +7,7 @@ import { processAndSaveResultImages } from "./imageProcessor.ts";
 
 // Gemini API configuration
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta";
-const GEMINI_MODEL = "gemini-2.0-flash-exp-image-generation"; // Using experimental image generation model
+const GEMINI_MODEL = Deno.env.get("GEMINI_IMAGE_MODEL") || "gemini-2.5-flash-image";
 
 // Function to generate a staged room using Gemini 2.0 Flash API
 export async function generateStagedRoomWithGemini(
@@ -16,7 +16,7 @@ export async function generateStagedRoomWithGemini(
   projectId: string
 ): Promise<string[]> {
   try {
-    console.log("Starting Gemini 2.0 Flash Experimental Image Generation API processing...");
+    console.log("Starting Gemini image generation with model:", GEMINI_MODEL);
     
     // Verify Gemini API key is available
     if (!geminiApiKey) {
@@ -54,26 +54,27 @@ The staged room should look professional and maintain the original room structur
           ]
         }
       ],
-      generation_config: {
+      generationConfig: {
         temperature: 1,
-        top_p: 0.95,
-        top_k: 40,
-        max_output_tokens: 8192,
-        response_modalities: ["image", "text"],
-        response_mime_type: "text/plain"
+        topP: 0.95,
+        topK: 40,
+        maxOutputTokens: 8192,
+        responseModalities: ["TEXT", "IMAGE"],
       }
     };
     
     console.log("Sending request to Gemini API");
     
     // Send request to Gemini API using the chat completions endpoint
-    const apiUrl = `${GEMINI_API_URL}/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`;
+    const apiUrl = `${GEMINI_API_URL}/models/${GEMINI_MODEL}:generateContent`;
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "x-goog-api-key": geminiApiKey,
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(90000),
     });
     
     // Check for error responses
@@ -105,7 +106,7 @@ The staged room should look professional and maintain the original room structur
     
     if (generatedImages.length === 0) {
       // If no images found in the expected format, check the full response for debugging
-      console.error("Unexpected Gemini response format:", JSON.stringify(data));
+      console.error("Gemini response did not contain an image.");
       throw new Error("Gemini did not return any images. Please try updating your prompt or contact support.");
     }
     

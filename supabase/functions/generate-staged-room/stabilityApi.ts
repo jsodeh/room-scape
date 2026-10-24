@@ -12,15 +12,15 @@ export async function generateStagedRoom(
 ): Promise<string[]> {
   console.log("Choosing API for image generation...");
   
-  // If Gemini API key is available, prefer using it (experimental)
-  if (geminiApiKey) {
-    console.log("Using Gemini 2.0 Flash Experimental Image Generation API");
+  const provider = Deno.env.get('IMAGE_PROVIDER') || (geminiApiKey ? 'gemini' : 'stability');
+  if (provider === 'gemini' && geminiApiKey) {
+    console.log("Using Gemini image generation");
     // We're NOT passing referenceImageUrl here anymore
     return await generateStagedRoomWithGemini(roomImageData, prompt, projectId);
   }
   
   // Fall back to Stability AI if Gemini is not available
-  if (stabilityApiKey) {
+  if (provider === 'stability' && stabilityApiKey) {
     console.log("Using Stability AI Search and Replace API");
     // We're NOT passing referenceImageUrl here anymore
     return await generateStagedRoomWithStability(roomImageData, prompt, projectId);
