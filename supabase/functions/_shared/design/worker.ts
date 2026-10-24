@@ -158,7 +158,7 @@ export async function processNextJob() {
       error instanceof HttpError;
     const uncertain = error instanceof ProviderFailure
       ? error.uncertain
-      : dispatched && !(error instanceof HttpError);
+      : dispatched && !(error instanceof HttpError && error.status < 500);
     const status = uncertain ? "needs_recovery" : "failed";
     checked(
       await db.from("design_jobs").update({

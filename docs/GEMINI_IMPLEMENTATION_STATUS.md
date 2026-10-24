@@ -17,7 +17,7 @@ See [deployment and operating instructions](GEMINI_WORKSPACE_DEPLOYMENT.md). Mod
 Verification on 24 October 2026:
 
 - Three workflow migrations are recorded and match the local SQL; all 11 new tables have RLS enabled. Four Edge functions are ACTIVE, the private worker schedule is active, and worker readiness is verified.
-- TypeScript, build, targeted lint and four Edge function type checks pass. There are 19 backend tests, 17 browser tests and four deployment-safety tests, plus real PostgreSQL policy/transaction checks. CI runs these without paid inference.
+- TypeScript, build, targeted lint and four Edge function type checks pass. There are 20 backend tests, 17 browser tests and four deployment-safety tests, plus real PostgreSQL policy/transaction checks. CI runs these without paid inference. A storage failure after successful inference explicitly enters recovery and preserves the received provider ID.
 - Authenticated hosted smoke passes. Independent cleanup verification found zero temporary evaluation accounts remaining.
 - Desktop/mobile browser renders were visually inspected with synthetic fixtures; neither viewport overflows. They are UI verification fixtures, not proof of a successful new Gemini render.
 - [PR #3](https://github.com/jsodeh/room-scape/pull/3) has a READY Vercel Preview with the workspace flag enabled for its branch. Cloud egress blocks direct browser access to the generated Vercel hostname; deployment state is verified through Vercel's API. Local browser flows and hosted Supabase checks are verified separately.

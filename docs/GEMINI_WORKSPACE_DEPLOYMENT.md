@@ -69,7 +69,7 @@ VITE_WORKSPACE_V2=true npm run build
 npm run test:e2e
 npx playwright test --config playwright.workspace.config.ts
 bash tests/backend/run-workflow-tests.sh
-deno test --config supabase/functions/deno.json --allow-env --allow-read --allow-net tests/backend/security_test.ts tests/backend/workflow_test.ts
+deno test --config supabase/functions/deno.json --allow-env --allow-read --allow-net tests/backend/security_test.ts tests/backend/workflow_test.ts tests/backend/worker_test.ts
 python3 scripts/evaluate-design-workflow.py        # hosted smoke, zero image generations
 python3 scripts/evaluate-design-workflow.py --generate  # operator-only, at most three 2K attempts
 ```
