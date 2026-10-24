@@ -163,6 +163,15 @@ export async function generateImage(args: {
   fingerprint: string;
   onInteraction?: (id: string) => Promise<void>;
 }) {
+  if (
+    args.images.reduce((n, image) => n + image.bytes.length, 0) >
+      14 * 1024 * 1024
+  ) {
+    throw new HttpError(
+      413,
+      "These inputs are too large together. Use fewer references or a smaller editing image.",
+    );
+  }
   const ai = client();
   const previous = args.previous?.model === args.model &&
       args.previous.fingerprint === args.fingerprint && args.previous.turns < 8
@@ -192,15 +201,6 @@ export async function generateImage(args: {
       data: base64(image.bytes),
       mime_type: image.mimeType,
     });
-  }
-  if (
-    args.images.reduce((n, image) => n + image.bytes.length, 0) >
-      14 * 1024 * 1024
-  ) {
-    throw new HttpError(
-      413,
-      "These inputs are too large together. Use fewer references or a smaller editing image.",
-    );
   }
   const mode = Deno.env.get("GEMINI_WORKFLOW_API") || "interactions";
   try {

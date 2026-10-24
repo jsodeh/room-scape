@@ -168,6 +168,34 @@ Deno.test("actual MIME validation excludes thought images and rejects mismatched
   );
 });
 const originalFetch = globalThis.fetch;
+Deno.test("oversized inline inputs fail before encoding or provider history lookup", async () => {
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    throw new Error("Unexpected provider access");
+  };
+  try {
+    await rejects(() =>
+      generateImage({
+        ...args,
+        images: [{
+          label: "EDIT_CANVAS",
+          mimeType: "image/jpeg",
+          bytes: new Uint8Array(14 * 1024 * 1024 + 1),
+        }],
+        previous: {
+          interactionId: "old",
+          fingerprint: args.fingerprint,
+          model: args.model,
+          turns: 1,
+        },
+      })
+    );
+    equal(calls, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
 Deno.test("blocked responses and quota errors fail without a substituted model", async () => {
   await rejects(() =>
     extractImages({ candidates: [{ finishReason: "SAFETY" }] })
